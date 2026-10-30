@@ -1,0 +1,30 @@
+# FocusFlow v3 — Permanent Desktop App
+
+## One-time install
+
+1. Install Node.js once: https://nodejs.org
+2. Extract this folder
+3. Double-click **FocusFlow.bat** (Windows) or **FocusFlow.sh** (Mac/Linux)
+
+## After that
+
+Just double-click. Pin the running app icon to the taskbar (right-click → Pin to taskbar).
+
+## New in this version
+
+- Edit button (✎) on Tasks, Goals, and Namaz
+- Better UI with fade-in animations
+- Dynamic numbers in Days Remaining detailed view
+- Achievements and Targets use a document-style editor (contenteditable, supports formatting)
+- Running week/month still tagged and on top
+- Friday–Friday weeks
+- All data saved
+
+## Files
+
+- index.html
+- main.js
+- package.json
+- FocusFlow.bat
+- FocusFlow.sh
+- HOW-TO-USE.txt

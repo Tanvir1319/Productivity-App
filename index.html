@@ -1,0 +1,2678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FocusFlow</title>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { margin:0; height:100vh; background:#070b14; color:#ececec; font-family:system-ui,-apple-system,sans-serif; display:flex; overflow:hidden; }
+.sidebar { width:250px; background:#0c101c; border-right:1px solid rgba(255,255,255,0.05); padding:18px 10px; display:flex; flex-direction:column; gap:4px; overflow-y:auto; }
+.logo { font-size:1.15rem; font-weight:600; padding:6px 10px 14px; color:#fff; }
+.logo small { display:block; font-size:0.65rem; color:#666; font-weight:400; letter-spacing:1px; margin-top:2px; }
+.nav-item { padding:9px 12px; border-radius:10px; cursor:pointer; font-size:0.88rem; color:#aaa; transition:all 0.15s; }
+.nav-item:hover { background:rgba(255,255,255,0.04); color:#fff; }
+.nav-item.active { background:rgba(124,92,252,0.18); color:#c4b5fd; }
+.sidebar-section { margin-top:10px; padding:10px 12px; background:rgba(255,255,255,0.03); border-radius:12px; cursor:pointer; transition:background 0.15s; }
+.sidebar-section:hover { background:rgba(255,255,255,0.05); }
+.sidebar-section h4 { font-size:0.68rem; color:#666; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }
+.progress-bar { height:6px; background:rgba(255,255,255,0.08); border-radius:10px; overflow:hidden; margin:5px 0 3px; }
+.progress-fill { height:100%; background:linear-gradient(90deg,#7c5cfc,#38bdf8); border-radius:10px; transition:width 0.6s cubic-bezier(0.4,0,0.2,1); }
+.progress-text { font-size:0.68rem; color:#888; display:flex; justify-content:space-between; }
+.main { flex:1; min-width:0; padding:22px 26px; overflow-y:auto; }
+.header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; }
+.greeting h1 { font-size:1.55rem; font-weight:400; }
+.greeting p { color:#666; font-size:0.82rem; margin-top:3px; }
+.timer-wrap { text-align:center; margin-bottom:24px; }
+.timer-circle { width:190px; height:190px; margin:0 auto; border-radius:50%; background:radial-gradient(circle at 50% 40%, rgba(25,30,50,0.95), rgba(12,15,28,0.98)); position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:0 0 40px rgba(80,100,200,0.12); }
+.timer-circle::before { content:''; position:absolute; inset:-3px; border-radius:50%; background:linear-gradient(135deg,#7c5cfc,#38bdf8); z-index:-1; opacity:0.65; }
+.timer-label { font-size:0.58rem; letter-spacing:2px; color:#777; text-transform:uppercase; }
+.timer-display { font-size:2.6rem; font-weight:300; background:linear-gradient(180deg,#fff,#a5b4fc); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.timer-sub { font-size:0.72rem; color:#666; margin-top:2px; }
+.timer-controls { display:flex; gap:8px; justify-content:center; margin-top:12px; align-items:center; }
+.timer-controls input { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; padding:6px 8px; font-size:0.82rem; width:60px; text-align:center; }
+.btn-timer { border:none; border-radius:16px; padding:7px 16px; font-size:0.8rem; cursor:pointer; color:white; }
+.btn-start { background:linear-gradient(135deg,#7c5cfc,#38bdf8); }
+.btn-stop { background:rgba(255,255,255,0.08); color:#aaa; }
+.boards { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.board { background:rgba(16,18,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:16px; padding:14px; min-height:300px; }
+.board-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.board-name { font-size:0.95rem; font-weight:500; }
+.tasks .board-name { color:#c4b5fd; }
+.notes .board-name { color:#7dd3fc; }
+.list { display:flex; flex-direction:column; gap:7px; max-height:42vh; overflow-y:auto; }
+.item { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:10px; padding:10px 12px; transition:all 0.2s; animation:fadeIn 0.25s ease; }
+.item:hover { background:rgba(255,255,255,0.05); transform:translateY(-1px); }
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+.task { display:flex; align-items:flex-start; gap:8px; }
+.task.done { opacity:0.5; }
+.task.done .task-text { text-decoration:line-through; color:#777; }
+.chk { width:16px; height:16px; border-radius:4px; border:1.5px solid rgba(255,255,255,0.25); flex-shrink:0; cursor:pointer; margin-top:1px; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+.task.done .chk, .goal.done .chk { background:#a78bfa; border-color:#a78bfa; }
+.chk::after { content:''; width:4px; height:7px; border:solid white; border-width:0 2px 2px 0; transform:rotate(45deg) scale(0); transition:transform 0.15s; }
+.task.done .chk::after, .goal.done .chk::after { transform:rotate(45deg) scale(1); }
+.task-text { flex:1; font-size:0.86rem; }
+.actions { display:flex; gap:4px; opacity:0; transition:opacity 0.15s; }
+.item:hover .actions { opacity:1; }
+.actions button { background:none; border:none; color:#666; cursor:pointer; font-size:0.8rem; padding:2px 5px; border-radius:4px; }
+.actions button:hover { color:#fff; background:rgba(255,255,255,0.08); }
+.note-text, .goal-text, .namaz-text, .edit-input { width:100%; background:transparent; border:none; color:#eee; font-size:0.84rem; outline:none; font-family:inherit; resize:none; }
+.note-text { min-height:48px; }
+.add-row { margin-top:10px; }
+.add-row input, .add-row button, .add-row select, .add-row textarea { width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#fff; padding:8px 10px; font-size:0.84rem; outline:none; margin-top:4px; }
+.btn-add { margin-top:6px; background:linear-gradient(135deg,#3b5bdb,#5c7cfa); border:none; cursor:pointer; color:white; }
+.btn-note { background:linear-gradient(135deg,#0ea5e9,#38bdf8); }
+.view { display:none; }
+.view.active { display:block; }
+.running-tag { background:#22c55e; color:#fff; font-size:0.65rem; padding:2px 7px; border-radius:10px; font-weight:600; margin-left:6px; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+.goal.running { border-left:3px solid #22c55e; }
+
+/* Week Tabs */
+.week-tabs-wrapper { display:flex; align-items:center; gap:6px; margin-bottom:14px; overflow-x:auto; padding-bottom:6px; }
+.week-tabs-wrapper::-webkit-scrollbar { height:4px; }
+.week-tabs-wrapper::-webkit-scrollbar-thumb { background:rgba(124,92,252,0.3); border-radius:10px; }
+.week-tab { padding:7px 14px; border-radius:10px; cursor:pointer; font-size:0.82rem; color:#888; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); transition:all 0.2s; white-space:nowrap; position:relative; flex-shrink:0; display:flex; align-items:center; gap:6px; }
+.week-tab:hover { background:rgba(255,255,255,0.07); color:#ccc; }
+.week-tab.active { background:rgba(124,92,252,0.2); border-color:rgba(124,92,252,0.4); color:#c4b5fd; }
+.week-tab .running-dot { width:7px; height:7px; border-radius:50%; background:#22c55e; animation:pulse 2s infinite; }
+.week-tab .tab-close { font-size:0.7rem; color:#666; margin-left:2px; cursor:pointer; border-radius:4px; padding:1px 3px; }
+.week-tab .tab-close:hover { color:#f87171; background:rgba(239,68,68,0.15); }
+.week-tab-add { padding:7px 12px; border-radius:10px; cursor:pointer; font-size:1rem; color:#666; background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.1); transition:all 0.2s; flex-shrink:0; }
+.week-tab-add:hover { background:rgba(124,92,252,0.12); border-color:rgba(124,92,252,0.3); color:#c4b5fd; }
+
+/* Priority Tags */
+.priority-tag { font-size:0.62rem; padding:2px 8px; border-radius:8px; font-weight:600; letter-spacing:0.3px; text-transform:uppercase; margin-left:6px; display:inline-block; vertical-align:middle; }
+.priority-tag.very-very-important { background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+.priority-tag.important { background:rgba(249,115,22,0.2); color:#fb923c; border:1px solid rgba(249,115,22,0.3); }
+.priority-tag.necessary { background:rgba(234,179,8,0.2); color:#facc15; border:1px solid rgba(234,179,8,0.3); }
+.priority-tag.good-to-done { background:rgba(34,197,94,0.2); color:#4ade80; border:1px solid rgba(34,197,94,0.3); }
+.priority-select { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#aaa; padding:6px 8px; font-size:0.8rem; outline:none; margin-top:4px; width:100%; cursor:pointer; }
+.priority-select option { background:#13162a; color:#eee; }
+
+/* Split View & Enhanced Buttons */
+.btn-split { background:rgba(124,92,252,0.12); border:1px solid rgba(124,92,252,0.3); color:#c4b5fd; border-radius:8px; padding:4px 10px; font-size:0.75rem; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s; font-weight:500; }
+.btn-split:hover { background:rgba(124,92,252,0.25); border-color:rgba(124,92,252,0.5); color:#fff; transform:translateY(-1px); }
+.split-view-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; padding:12px 16px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px; width:100%; box-sizing:border-box; }
+.split-view-header h2 { font-size:1.15rem; font-weight:500; color:#fff; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.btn-exit-split { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.25); color:#f87171; padding:6px 16px; border-radius:8px; font-size:0.78rem; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+.btn-exit-split:hover { background:rgba(239,68,68,0.22); color:#fff; }
+
+.split-grid { 
+    display:grid; 
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); 
+    gap:16px; 
+    align-items:stretch; 
+    width:100%;
+}
+.split-pane { 
+    background:rgba(16,18,30,0.65); 
+    border:1px solid rgba(124,92,252,0.15); 
+    border-radius:16px; 
+    padding:16px; 
+    min-height:480px; 
+    box-shadow:0 8px 30px rgba(0,0,0,0.25); 
+    display:flex; 
+    flex-direction:column; 
+    min-width:0; 
+    width:100%;
+    box-sizing:border-box;
+}
+.split-pane-header { 
+    display:flex; 
+    justify-content:space-between; 
+    align-items:center; 
+    flex-wrap:wrap; 
+    gap:10px; 
+    margin-bottom:14px; 
+    padding-bottom:10px; 
+    border-bottom:1px solid rgba(255,255,255,0.05); 
+    width:100%;
+}
+.split-pane-title { font-size:0.88rem; font-weight:600; color:#c4b5fd; display:flex; align-items:center; gap:6px; white-space:nowrap; }
+.split-pills { 
+    display:flex; 
+    flex-wrap:wrap; 
+    gap:4px; 
+    background:rgba(255,255,255,0.04); 
+    padding:3px; 
+    border-radius:8px; 
+    border:1px solid rgba(255,255,255,0.06); 
+    max-width:100%;
+}
+.split-pill { border:none; background:transparent; color:#888; padding:4px 10px; font-size:0.75rem; border-radius:6px; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+.split-pill:hover { color:#ddd; background:rgba(255,255,255,0.05); }
+.split-pill.active { background:rgba(124,92,252,0.25); color:#c4b5fd; font-weight:600; }
+
+.split-pane-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+}
+.split-pane .list, .split-list {
+    flex: 1;
+    max-height: 52vh;
+    min-height: 200px;
+    overflow-y: auto;
+    width: 100%;
+}
+@media (min-height: 850px) {
+    .split-pane .list, .split-list {
+        max-height: 60vh;
+    }
+}
+@media (min-height: 1050px) {
+    .split-pane .list, .split-list {
+        max-height: 68vh;
+    }
+}
+.split-pane .week-tabs-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+.split-pane .goal-text {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.45;
+}
+.split-pane .item {
+    width: 100%;
+    box-sizing: border-box;
+}
+.split-pane .add-row {
+    margin-top: 10px;
+    width: 100%;
+}
+
+@media (max-width: 960px) {
+    .split-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Quran Carousel Banner */
+.quran-carousel-wrap {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto 20px auto;
+    background: linear-gradient(135deg, rgba(22, 27, 49, 0.72) 0%, rgba(13, 16, 32, 0.88) 100%);
+    border: 1px solid rgba(124, 92, 252, 0.22);
+    border-radius: 18px;
+    padding: 14px 20px 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+    position: relative;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+.quran-carousel-wrap:hover {
+    border-color: rgba(56, 189, 248, 0.35);
+    box-shadow: 0 12px 36px rgba(0,0,0,0.45), 0 0 20px rgba(124,92,252,0.1);
+}
+.quran-carousel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.quran-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+}
+.quran-nav-btns {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.quran-nav-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: #aaa;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+.quran-nav-btn:hover {
+    background: rgba(124,92,252,0.25);
+    color: #fff;
+    border-color: rgba(124,92,252,0.4);
+}
+.quran-carousel-body {
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 4px 10px;
+}
+.quran-slide {
+    display: none;
+    animation: fadeIn 0.4s ease;
+    width: 100%;
+}
+.quran-slide.active {
+    display: block;
+}
+.quran-verse-text {
+    font-size: 0.96rem;
+    font-weight: 700;
+    line-height: 1.6;
+    color: #f8fafc;
+    margin-bottom: 6px;
+    letter-spacing: 0.2px;
+}
+.quran-verse-sura {
+    display: inline-block;
+    color: #c4b5fd;
+    font-weight: 600;
+    font-size: 0.84rem;
+    margin-left: 4px;
+}
+.quran-note {
+    font-size: 0.82rem;
+    color: #94a3b8;
+    margin-top: 4px;
+}
+.quran-link {
+    color: #38bdf8;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+.quran-link:hover {
+    color: #7dd3fc;
+    text-shadow: 0 0 10px rgba(56,189,248,0.5);
+}
+.quran-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+.quran-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.quran-dot.active {
+    background: #38bdf8;
+    width: 18px;
+    border-radius: 4px;
+}
+.namaz-tab-count { font-size:0.7rem; color:#888; margin-left:6px; font-weight:normal; }
+.hidden-date-picker { position:fixed; top:-9999px; left:-9999px; opacity:0; pointer-events:none; }
+.modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); z-index:100; align-items:center; justify-content:center; }
+.modal.show { display:flex; }
+.modal-content { position:relative; background:linear-gradient(145deg, #13162a 0%, #0e1120 50%, #111528 100%); border:1px solid rgba(124,92,252,0.15); border-radius:22px; padding:0; width:92%; max-width:660px; max-height:88vh; overflow-y:auto; animation:modalIn 0.35s cubic-bezier(0.16,1,0.3,1); box-shadow:0 25px 60px rgba(0,0,0,0.5), 0 0 80px rgba(124,92,252,0.08), inset 0 1px 0 rgba(255,255,255,0.05); }
+.modal-content::-webkit-scrollbar { width:6px; }
+.modal-content::-webkit-scrollbar-track { background:transparent; }
+.modal-content::-webkit-scrollbar-thumb { background:rgba(124,92,252,0.3); border-radius:10px; }
+@keyframes modalIn { from { opacity:0; transform:translateY(20px) scale(0.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+.modal-header { display:flex; align-items:center; justify-content:space-between; padding:22px 26px 0; }
+.modal-header h2 { font-size:1.3rem; font-weight:600; background:linear-gradient(135deg, #fff 0%, #a5b4fc 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin:0; }
+.modal-close { width:34px; height:34px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); color:#888; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0; }
+.modal-close:hover { background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.3); color:#f87171; transform:rotate(90deg); }
+.modal-body { padding:18px 26px 26px; }
+.stat-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:22px; }
+.stat { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:18px 12px; border-radius:14px; text-align:center; transition:all 0.3s cubic-bezier(0.16,1,0.3,1); position:relative; overflow:hidden; }
+.stat::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg, rgba(124,92,252,0.08), transparent); opacity:0; transition:opacity 0.3s; }
+.stat:hover { transform:translateY(-4px); border-color:rgba(124,92,252,0.2); box-shadow:0 8px 25px rgba(124,92,252,0.1); }
+.stat:hover::before { opacity:1; }
+.stat b { display:block; font-size:1.7rem; font-weight:600; background:linear-gradient(135deg, #c4b5fd, #38bdf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; position:relative; }
+.stat span { font-size:0.72rem; color:#777; letter-spacing:0.5px; text-transform:uppercase; position:relative; }
+.stat.passed b { background:linear-gradient(135deg, #a78bfa, #818cf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.stat.remaining b { background:linear-gradient(135deg, #38bdf8, #22d3ee); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.section-label { display:flex; align-items:center; gap:8px; margin:20px 0 10px; font-size:0.95rem; font-weight:500; color:#e2e8f0; }
+.section-label .icon { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:0.85rem; }
+.section-label .icon.achievement { background:linear-gradient(135deg, rgba(34,197,94,0.2), rgba(16,185,129,0.1)); }
+.section-label .icon.target { background:linear-gradient(135deg, rgba(249,115,22,0.2), rgba(234,88,12,0.1)); }
+.editor-toolbar { display:flex; gap:4px; padding:8px 10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-bottom:none; border-radius:10px 10px 0 0; }
+.toolbar-btn { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:#999; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:0.78rem; transition:all 0.15s; display:flex; align-items:center; gap:4px; }
+.toolbar-btn:hover { background:rgba(124,92,252,0.15); border-color:rgba(124,92,252,0.3); color:#c4b5fd; }
+.toolbar-btn.active { background:rgba(124,92,252,0.2); border-color:rgba(124,92,252,0.4); color:#c4b5fd; }
+.toolbar-divider { width:1px; background:rgba(255,255,255,0.08); margin:2px 4px; }
+.doc-editor { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:0 0 12px 12px; padding:16px; min-height:130px; outline:none; font-size:0.9rem; line-height:1.7; color:#e2e8f0; transition:border-color 0.2s; }
+.doc-editor:focus { border-color:rgba(124,92,252,0.4); background:rgba(255,255,255,0.04); }
+.doc-editor:empty:before { content:attr(placeholder); color:#4a4a5a; }
+.doc-editor ul, .doc-editor ol { padding-left:20px; margin:4px 0; }
+.doc-editor li { margin:2px 0; }
+.doc-editor li::marker { color:#7c5cfc; }
+.close-btn { display:none; }
+.namaz-time { font-size:0.85rem; color:#7dd3fc; font-weight:500; margin-bottom:4px; }
+.dynamic { transition:all 0.4s; }
+</style>
+</head>
+<body>
+<div class="sidebar">
+    <div class="logo">FocusFlow<small>Focus. Plan. Achieve.</small></div>
+    <div class="nav-item active" data-view="tasks">✓ Tasks</div>
+    <div class="nav-item" data-view="notes">📝 Notes</div>
+    <div class="nav-item" data-view="daily">📅 Daily Goals</div>
+    <div class="nav-item" data-view="weekly">📆 Weekly Goals</div>
+    <div class="nav-item" data-view="monthly">🗓 Monthly Goals</div>
+    <div class="nav-item" data-view="yearly">🎯 Yearly Goals</div>
+    <div class="nav-item" data-view="split">◫ Split Screen</div>
+    <div class="nav-item" data-view="namaz">🕌 Namaz</div>
+
+    <div class="sidebar-section" id="year-section">
+        <h4>Days Remaining</h4>
+        <div class="progress-bar"><div class="progress-fill" id="year-bar" style="width:0%"></div></div>
+        <div class="progress-text"><span id="year-text">0 left</span><span id="year-pct">0%</span></div>
+    </div>
+    <div class="sidebar-section">
+        <h4>Daily</h4>
+        <div class="progress-bar"><div class="progress-fill" id="daily-bar" style="width:0%"></div></div>
+        <div class="progress-text"><span>Progress</span><span id="daily-pct">0%</span></div>
+    </div>
+    <div class="sidebar-section">
+        <h4>Weekly</h4>
+        <div class="progress-bar"><div class="progress-fill" id="weekly-bar" style="width:0%"></div></div>
+        <div class="progress-text"><span>Progress</span><span id="weekly-pct">0%</span></div>
+    </div>
+    <div class="sidebar-section">
+        <h4>Monthly</h4>
+        <div class="progress-bar"><div class="progress-fill" id="monthly-bar" style="width:0%"></div></div>
+        <div class="progress-text"><span>Progress</span><span id="monthly-pct">0%</span></div>
+    </div>
+    <div class="sidebar-section">
+        <h4>Yearly</h4>
+        <div class="progress-bar"><div class="progress-fill" id="yearly-bar" style="width:0%"></div></div>
+        <div class="progress-text"><span>Progress</span><span id="yearly-pct">0%</span></div>
+    </div>
+    <div class="sidebar-section">
+        <h4>Notes</h4>
+        <div class="progress-bar"><div class="progress-fill" id="notes-bar" style="width:0%"></div></div>
+        <div class="progress-text"><span id="notes-count">0 notes</span><span id="notes-pct">0%</span></div>
+    </div>
+</div>
+
+<div class="main">
+    <div class="header">
+        <div class="greeting">
+            <h1 id="greeting">Good evening</h1>
+            <p>Stay focused. Small steps, big progress.</p>
+        </div>
+    </div>
+
+    <!-- Quran Verses Carousel Banner -->
+    <div class="quran-carousel-wrap" id="quran-carousel">
+        <div class="quran-carousel-head">
+            <span class="quran-badge">📖 Al Quran • Reflection</span>
+            <div class="quran-nav-btns">
+                <button class="quran-nav-btn" onclick="prevQuranSlide()" title="Previous Verse">‹</button>
+                <span id="quran-slide-counter" style="font-size:0.72rem;color:#888;margin:0 4px">1 / 5</span>
+                <button class="quran-nav-btn" onclick="nextQuranSlide()" title="Next Verse">›</button>
+            </div>
+        </div>
+        <div class="quran-carousel-body">
+            <!-- Slide 1 -->
+            <div class="quran-slide active" data-slide="0">
+                <div class="quran-verse-text">
+                    “And Allah increases those who were guided, in guidance, and the enduring good deeds are better to your Lord for reward and better for recourse.”<span class="quran-verse-sura">[Al Quran Sura Muryam:76]</span>
+                </div>
+                <div class="quran-note">
+                    (to read the quran go buy one or for free go here <a href="https://quranmazid.com/" class="quran-link" onclick="openQuranLink(event)">https://quranmazid.com/</a>)
+                </div>
+            </div>
+            <!-- Slide 2 -->
+            <div class="quran-slide" data-slide="1">
+                <div class="quran-verse-text">
+                    “And will drive the criminals to Hell in thirst”<span class="quran-verse-sura">[Al Quran Sura Muryam:86]</span>
+                </div>
+                <div class="quran-note">
+                    (to read the quran go buy one or for free go here <a href="https://quranmazid.com/" class="quran-link" onclick="openQuranLink(event)">https://quranmazid.com/</a>)
+                </div>
+            </div>
+            <!-- Slide 3 -->
+            <div class="quran-slide" data-slide="2">
+                <div class="quran-verse-text">
+                    “And He found you lost and guided [you],”<span class="quran-verse-sura">[Al Quran Sura Duha:7]</span>
+                </div>
+                <div class="quran-note">
+                    (to read the quran go buy one or for free go here <a href="https://quranmazid.com/" class="quran-link" onclick="openQuranLink(event)">https://quranmazid.com/</a>)
+                </div>
+            </div>
+            <!-- Slide 4 -->
+            <div class="quran-slide" data-slide="3">
+                <div class="quran-verse-text">
+                    “So have they not traveled through the earth and have hearts by which to reason and ears by which to hear? For indeed, it is not eyes that are blinded, but blinded are the hearts which are within the breasts.”<span class="quran-verse-sura">[Al Quran Sura Hajj:46]</span>
+                </div>
+                <div class="quran-note">
+                    (to read the quran go buy one or for free go here <a href="https://quranmazid.com/" class="quran-link" onclick="openQuranLink(event)">https://quranmazid.com/</a>)
+                </div>
+            </div>
+            <!-- Slide 5 -->
+            <div class="quran-slide" data-slide="4">
+                <div class="quran-verse-text">
+                    “The example of Paradise, which the righteous have been promised, is [that] beneath it rivers flow. Its fruit is lasting, and its shade. That is the consequence for the righteous, and the consequence for the disbelievers is the Fire.”<span class="quran-verse-sura">[Al Quran Sura Ar Rad:35]</span>
+                </div>
+                <div class="quran-note">
+                    (to read the quran go buy one or for free go here <a href="https://quranmazid.com/" class="quran-link" onclick="openQuranLink(event)">https://quranmazid.com/</a>)
+                </div>
+            </div>
+        </div>
+        <div class="quran-dots" id="quran-dots">
+            <span class="quran-dot active" onclick="setQuranSlide(0)"></span>
+            <span class="quran-dot" onclick="setQuranSlide(1)"></span>
+            <span class="quran-dot" onclick="setQuranSlide(2)"></span>
+            <span class="quran-dot" onclick="setQuranSlide(3)"></span>
+            <span class="quran-dot" onclick="setQuranSlide(4)"></span>
+        </div>
+    </div>
+
+    <div class="timer-wrap">
+        <div class="timer-circle">
+            <div class="timer-label">Focus Session</div>
+            <div class="timer-display" id="timerDisplay">25:00</div>
+            <div class="timer-sub" id="timerSub">Ready</div>
+        </div>
+        <div class="timer-controls">
+            <input type="number" id="minInput" value="25" min="1" max="120">
+            <span style="color:#555">min</span>
+            <button class="btn-timer btn-start" id="startBtn">Start</button>
+            <button class="btn-timer btn-stop" id="stopBtn">Stop</button>
+        </div>
+    </div>
+
+    <div class="view active" id="view-tasks">
+        <div class="boards">
+            <div class="board tasks">
+                <div class="board-head"><div class="board-name">Tasks</div><div class="badge" id="count-tasks">0</div></div>
+                <div class="list" id="task-list"></div>
+                <div class="add-row">
+                    <input type="text" id="task-input" placeholder="Add task..." maxlength="140">
+                    <button class="btn-add" id="add-task">Add</button>
+                </div>
+            </div>
+            <div class="board notes">
+                <div class="board-head"><div class="board-name">Notes</div><div class="badge" id="count-notes">0</div></div>
+                <div class="list" id="note-list"></div>
+                <div class="add-row"><button class="btn-add btn-note" id="add-note">+ New Note</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="view" id="view-notes">
+        <div class="board notes" style="max-width:700px">
+            <div class="board-head"><div class="board-name">All Notes</div></div>
+            <div class="list" id="full-note-list"></div>
+            <div class="add-row"><button class="btn-add btn-note" id="add-note-full">+ New Note</button></div>
+        </div>
+    </div>
+
+    <div class="view" id="view-daily">
+        <input type="date" id="daily-tab-picker" class="hidden-date-picker">
+        <div class="board" style="max-width:720px">
+            <div class="board-head">
+                <div class="board-name">Daily Goals</div>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <button class="btn-split" onclick="openSplitView('daily')">◫ Split Screen</button>
+                    <div class="badge" id="daily-count">0</div>
+                </div>
+            </div>
+            <div class="week-tabs-wrapper" id="day-tabs-wrapper"></div>
+            <div class="list" id="daily-list"></div>
+            <div class="add-row">
+                <input type="text" id="daily-input" placeholder="Add daily goal...">
+                <select class="priority-select" id="daily-priority">
+                    <option value="">No Priority</option>
+                    <option value="very-very-important">🔴 Very Very Important</option>
+                    <option value="important">🟠 Important</option>
+                    <option value="necessary">🟡 Necessary</option>
+                    <option value="good-to-done">🟢 Good to Done</option>
+                </select>
+                <button class="btn-add" id="add-daily">Add Goal</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="view" id="view-weekly">
+        <div class="board" style="max-width:720px">
+            <div class="board-head">
+                <div class="board-name">Weekly Goals <span style="font-size:0.7rem;color:#666">(Fri–Fri)</span></div>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <button class="btn-split" onclick="openSplitView('weekly')">◫ Split Screen</button>
+                    <div class="badge" id="weekly-count">0</div>
+                </div>
+            </div>
+            <div class="week-tabs-wrapper" id="week-tabs-wrapper"></div>
+            <div class="list" id="weekly-list"></div>
+            <div class="add-row">
+                <input type="text" id="weekly-input" placeholder="Add weekly goal...">
+                <select class="priority-select" id="weekly-priority">
+                    <option value="">No Priority</option>
+                    <option value="very-very-important">🔴 Very Very Important</option>
+                    <option value="important">🟠 Important</option>
+                    <option value="necessary">🟡 Necessary</option>
+                    <option value="good-to-done">🟢 Good to Done</option>
+                </select>
+                <button class="btn-add" id="add-weekly">Add Goal</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="view" id="view-monthly">
+        <div class="board" style="max-width:720px">
+            <div class="board-head">
+                <div class="board-name">Monthly Goals</div>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <button class="btn-split" onclick="openSplitView('monthly')">◫ Split Screen</button>
+                    <div class="badge" id="monthly-count">0</div>
+                </div>
+            </div>
+            <div class="week-tabs-wrapper" id="month-tabs-wrapper"></div>
+            <div class="list" id="monthly-list"></div>
+            <div class="add-row">
+                <input type="text" id="monthly-input" placeholder="Add monthly goal...">
+                <select class="priority-select" id="monthly-priority">
+                    <option value="">No Priority</option>
+                    <option value="very-very-important">🔴 Very Very Important</option>
+                    <option value="important">🟠 Important</option>
+                    <option value="necessary">🟡 Necessary</option>
+                    <option value="good-to-done">🟢 Good to Done</option>
+                </select>
+                <button class="btn-add" id="add-monthly">Add Goal</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="view" id="view-yearly">
+        <div class="board" style="max-width:720px">
+            <div class="board-head">
+                <div class="board-name">Yearly Goals</div>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <button class="btn-split" onclick="openSplitView('yearly')">◫ Split Screen</button>
+                    <div class="badge" id="yearly-count">0</div>
+                </div>
+            </div>
+            <div class="week-tabs-wrapper" id="year-tabs-wrapper"></div>
+            <div class="list" id="yearly-list"></div>
+            <div class="add-row">
+                <input type="text" id="yearly-input" placeholder="Add yearly goal...">
+                <select class="priority-select" id="yearly-priority">
+                    <option value="">No Priority</option>
+                    <option value="very-very-important">🔴 Very Very Important</option>
+                    <option value="important">🟠 Important</option>
+                    <option value="necessary">🟡 Necessary</option>
+                    <option value="good-to-done">🟢 Good to Done</option>
+                </select>
+                <button class="btn-add" id="add-yearly">Add Goal</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="view" id="view-split">
+        <div class="split-view-header">
+            <h2>◫ Split Screen Goals <span style="font-size:0.75rem;color:#888;font-weight:400">View and manage side by side</span></h2>
+            <button class="btn-exit-split" onclick="exitSplitView()">✕ Exit Split View</button>
+        </div>
+        <div class="split-grid">
+            <div class="split-pane">
+                <div class="split-pane-header">
+                    <div class="split-pane-title"><span>Left Column</span></div>
+                    <div class="split-pills" id="split-left-pills">
+                        <button class="split-pill" onclick="setSplitPaneView('left','daily')">📅 Daily</button>
+                        <button class="split-pill" onclick="setSplitPaneView('left','weekly')">📆 Weekly</button>
+                        <button class="split-pill" onclick="setSplitPaneView('left','monthly')">🗓 Monthly</button>
+                        <button class="split-pill" onclick="setSplitPaneView('left','yearly')">🎯 Yearly</button>
+                    </div>
+                </div>
+                <div id="split-left-content" class="split-pane-content"></div>
+            </div>
+            <div class="split-pane">
+                <div class="split-pane-header">
+                    <div class="split-pane-title"><span>Right Column</span></div>
+                    <div class="split-pills" id="split-right-pills">
+                        <button class="split-pill" onclick="setSplitPaneView('right','daily')">📅 Daily</button>
+                        <button class="split-pill" onclick="setSplitPaneView('right','weekly')">📆 Weekly</button>
+                        <button class="split-pill" onclick="setSplitPaneView('right','monthly')">🗓 Monthly</button>
+                        <button class="split-pill" onclick="setSplitPaneView('right','yearly')">🎯 Yearly</button>
+                    </div>
+                </div>
+                <div id="split-right-content" class="split-pane-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="view" id="view-namaz">
+        <div class="board" style="max-width:720px">
+            <div class="board-head">
+                <div class="board-name">Namaz Timetable <span id="namaz-tab-count" class="namaz-tab-count">(1/12 tabs)</span></div>
+                <div class="badge" id="namaz-count">0</div>
+            </div>
+            <div class="week-tabs-wrapper" id="namaz-tabs-wrapper"></div>
+            <div class="list" id="namaz-list"></div>
+            <div class="add-row">
+                <input type="text" id="namaz-name" placeholder="Prayer Name (e.g. Fajr)">
+                <input type="time" id="namaz-time">
+                <textarea id="namaz-note" class="note-text" placeholder="Notes..." style="margin-top:6px;min-height:40px"></textarea>
+                <button class="btn-add" id="add-namaz">Add Prayer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="yearModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>📅 Year Progress</h2>
+            <button class="modal-close" onclick="document.getElementById('yearModal').classList.remove('show')" title="Close">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="stat-grid" id="year-stats"></div>
+
+            <div class="section-label"><div class="icon achievement">🏆</div> Achievements</div>
+            <div class="editor-toolbar" data-for="achievements">
+                <button class="toolbar-btn" onclick="formatDoc('bold')" title="Bold"><b>B</b></button>
+                <button class="toolbar-btn" onclick="formatDoc('italic')" title="Italic"><i>I</i></button>
+                <button class="toolbar-btn" onclick="formatDoc('underline')" title="Underline"><u>U</u></button>
+                <div class="toolbar-divider"></div>
+                <button class="toolbar-btn" onclick="formatDoc('insertUnorderedList')" title="Bullet List">• List</button>
+                <button class="toolbar-btn" onclick="formatDoc('insertOrderedList')" title="Numbered List">1. List</button>
+                <div class="toolbar-divider"></div>
+                <button class="toolbar-btn" onclick="insertHeading()" title="Heading">H</button>
+                <button class="toolbar-btn" onclick="insertCheckpoint()" title="Checkpoint">☑ Point</button>
+            </div>
+            <div class="doc-editor" id="achievements" contenteditable="true" placeholder="Write your achievements here..."></div>
+
+            <div class="section-label"><div class="icon target">🎯</div> Targets</div>
+            <div class="editor-toolbar" data-for="targets">
+                <button class="toolbar-btn" onclick="formatDoc('bold')" title="Bold"><b>B</b></button>
+                <button class="toolbar-btn" onclick="formatDoc('italic')" title="Italic"><i>I</i></button>
+                <button class="toolbar-btn" onclick="formatDoc('underline')" title="Underline"><u>U</u></button>
+                <div class="toolbar-divider"></div>
+                <button class="toolbar-btn" onclick="formatDoc('insertUnorderedList')" title="Bullet List">• List</button>
+                <button class="toolbar-btn" onclick="formatDoc('insertOrderedList')" title="Numbered List">1. List</button>
+                <div class="toolbar-divider"></div>
+                <button class="toolbar-btn" onclick="insertHeading()" title="Heading">H</button>
+                <button class="toolbar-btn" onclick="insertCheckpoint()" title="Checkpoint">☑ Point</button>
+            </div>
+            <div class="doc-editor" id="targets" contenteditable="true" placeholder="Write your targets here..."></div>
+            <div style="display:flex;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06)">
+                <button class="modal-close" onclick="document.getElementById('yearModal').classList.remove('show')" title="Close">✕</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const store = {
+    tasks: JSON.parse(localStorage.getItem('ff_tasks') || '[]'),
+    notes: JSON.parse(localStorage.getItem('ff_notes') || '[]'),
+    days: JSON.parse(localStorage.getItem('ff_days') || '[]'),
+    weeks: JSON.parse(localStorage.getItem('ff_weeks') || '[]'),
+    months: JSON.parse(localStorage.getItem('ff_months') || '[]'),
+    years: JSON.parse(localStorage.getItem('ff_years') || '[]'),
+    namazTabs: JSON.parse(localStorage.getItem('ff_namaz_tabs') || '[]'),
+    achievements: localStorage.getItem('ff_ach') || '',
+    targets: localStorage.getItem('ff_tgt') || '',
+    activeDayTab: localStorage.getItem('ff_activeDayTab') || null,
+    activeWeekTab: localStorage.getItem('ff_activeWeekTab') || null,
+    activeMonthTab: localStorage.getItem('ff_activeMonthTab') || null,
+    activeYearTab: localStorage.getItem('ff_activeYearTab') || null,
+    activeNamazTab: localStorage.getItem('ff_activeNamazTab') || null,
+    splitLeft: localStorage.getItem('ff_splitLeft') || 'monthly',
+    splitRight: localStorage.getItem('ff_splitRight') || 'weekly'
+};
+
+function getTodayDate() {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function formatDayLabel(dateId) {
+    const today = getTodayDate();
+    const parts = dateId.split('-');
+    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const m = months[d.getMonth()];
+    const dayNum = d.getDate();
+    if (dateId === today) return `Today (${m} ${dayNum})`;
+    
+    const todayParts = today.split('-');
+    const tDate = new Date(parseInt(todayParts[0]), parseInt(todayParts[1]) - 1, parseInt(todayParts[2]));
+    const diffDays = Math.round((d - tDate) / 86400000);
+    if (diffDays === 1) return `Tomorrow (${m} ${dayNum})`;
+    if (diffDays === -1) return `Yesterday (${m} ${dayNum})`;
+    return `${m} ${dayNum}`;
+}
+
+// Migrate old daily data to new days format
+(function migrateDaily() {
+    const oldDaily = JSON.parse(localStorage.getItem('ff_daily') || '[]');
+    if (oldDaily.length > 0 && store.days.length === 0) {
+        const grouped = {};
+        const today = getTodayDate();
+        oldDaily.forEach(g => {
+            const key = g.date || today;
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push({ id: g.id, text: g.text, done: g.done, priority: g.priority || '' });
+        });
+        Object.keys(grouped).forEach(dateKey => {
+            store.days.push({ dateId: dateKey, goals: grouped[dateKey] });
+        });
+        save('days');
+        localStorage.removeItem('ff_daily');
+    }
+})();
+
+// Migrate old weekly data to new weeks format
+(function migrateWeekly() {
+    const oldWeekly = JSON.parse(localStorage.getItem('ff_weekly') || '[]');
+    if (oldWeekly.length > 0 && store.weeks.length === 0) {
+        const grouped = {};
+        oldWeekly.forEach(g => {
+            const key = g.date || getFridayWeek();
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push({ id: g.id, text: g.text, done: g.done, priority: g.priority || '' });
+        });
+        Object.keys(grouped).forEach(weekKey => {
+            store.weeks.push({ weekId: weekKey, label: 'Week ' + weekKey, goals: grouped[weekKey] });
+        });
+        save('weeks');
+        localStorage.removeItem('ff_weekly');
+    }
+})();
+
+// Migrate old monthly data to new months format
+(function migrateMonthly() {
+    const oldMonthly = JSON.parse(localStorage.getItem('ff_monthly') || '[]');
+    if (oldMonthly.length > 0 && store.months.length === 0) {
+        const grouped = {};
+        oldMonthly.forEach(g => {
+            const now = new Date();
+            const key = g.date || (now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'));
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push({ id: g.id, text: g.text, done: g.done, priority: g.priority || '' });
+        });
+        Object.keys(grouped).forEach(monthKey => {
+            store.months.push({ monthId: monthKey, goals: grouped[monthKey] });
+        });
+        save('months');
+        localStorage.removeItem('ff_monthly');
+    }
+})();
+
+// Migrate old namaz data to new namazTabs format
+(function migrateNamaz() {
+    const oldNamaz = JSON.parse(localStorage.getItem('ff_namaz') || '[]');
+    if (store.namazTabs.length === 0) {
+        store.namazTabs.push({ tabId: 'tab_main', name: 'Main Schedule', items: oldNamaz });
+        store.activeNamazTab = 'tab_main';
+        save('namazTabs');
+        save('activeNamazTab');
+        if (oldNamaz.length > 0) localStorage.removeItem('ff_namaz');
+    }
+})();
+
+let ids = { t:1, n:1, dg:1, wg:1, mg:1, yg:1, nm:1 };
+if (store.tasks.length) ids.t = Math.max(...store.tasks.map(x => x.id)) + 1;
+if (store.notes.length) ids.n = Math.max(...store.notes.map(x => x.id)) + 1;
+store.days.forEach(d => {
+    if (d.goals && d.goals.length) {
+        const maxId = Math.max(...d.goals.map(g => g.id));
+        if (maxId >= ids.dg) ids.dg = maxId + 1;
+    }
+});
+store.weeks.forEach(w => {
+    if (w.goals && w.goals.length) {
+        const maxId = Math.max(...w.goals.map(g => g.id));
+        if (maxId >= ids.wg) ids.wg = maxId + 1;
+    }
+});
+store.months.forEach(m => {
+    if (m.goals && m.goals.length) {
+        const maxId = Math.max(...m.goals.map(g => g.id));
+        if (maxId >= ids.mg) ids.mg = maxId + 1;
+    }
+});
+store.years.forEach(y => {
+    if (y.goals && y.goals.length) {
+        const maxId = Math.max(...y.goals.map(g => g.id));
+        if (maxId >= ids.yg) ids.yg = maxId + 1;
+    }
+});
+store.namazTabs.forEach(t => {
+    if (t.items && t.items.length) {
+        const maxId = Math.max(...t.items.map(x => x.id));
+        if (maxId >= ids.nm) ids.nm = maxId + 1;
+    }
+});
+
+function save(key) {
+    if (key === 'ach') localStorage.setItem('ff_ach', store.achievements);
+    else if (key === 'tgt') localStorage.setItem('ff_tgt', store.targets);
+    else if (key === 'days') localStorage.setItem('ff_days', JSON.stringify(store.days));
+    else if (key === 'weeks') localStorage.setItem('ff_weeks', JSON.stringify(store.weeks));
+    else if (key === 'months') localStorage.setItem('ff_months', JSON.stringify(store.months));
+    else if (key === 'years') localStorage.setItem('ff_years', JSON.stringify(store.years));
+    else if (key === 'namazTabs') localStorage.setItem('ff_namaz_tabs', JSON.stringify(store.namazTabs));
+    else if (key === 'activeDayTab') localStorage.setItem('ff_activeDayTab', store.activeDayTab || '');
+    else if (key === 'activeWeekTab') localStorage.setItem('ff_activeWeekTab', store.activeWeekTab || '');
+    else if (key === 'activeMonthTab') localStorage.setItem('ff_activeMonthTab', store.activeMonthTab || '');
+    else if (key === 'activeYearTab') localStorage.setItem('ff_activeYearTab', store.activeYearTab || '');
+    else if (key === 'activeNamazTab') localStorage.setItem('ff_activeNamazTab', store.activeNamazTab || '');
+    else if (key === 'splitLeft') localStorage.setItem('ff_splitLeft', store.splitLeft);
+    else if (key === 'splitRight') localStorage.setItem('ff_splitRight', store.splitRight);
+    else localStorage.setItem('ff_' + key, JSON.stringify(store[key]));
+}
+
+const ctx = new (window.AudioContext || window.webkitAudioContext)();
+function sound(type='pop') {
+    if (ctx.state === 'suspended') ctx.resume();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.value = 0.06;
+    if (type === 'complete') {
+        o.frequency.setValueAtTime(523, ctx.currentTime);
+        o.frequency.setValueAtTime(659, ctx.currentTime + 0.08);
+        o.frequency.setValueAtTime(784, ctx.currentTime + 0.16);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        o.start(); o.stop(ctx.currentTime + 0.4);
+    } else if (type === 'timer') {
+        o.frequency.setValueAtTime(440, ctx.currentTime);
+        o.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        o.start(); o.stop(ctx.currentTime + 0.5);
+    } else {
+        o.frequency.setValueAtTime(type === 'del' ? 250 : 480, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(type === 'del' ? 80 : 180, ctx.currentTime + 0.08);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+        o.start(); o.stop(ctx.currentTime + 0.12);
+    }
+}
+
+function esc(s) { return String(s).replace(/[&<>"']/g, m => ({'&':'&','<':'<','>':'>','"':'"',"'":'&#39;'}[m])); }
+
+function getFridayWeek(date = new Date()) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = (day + 2) % 7;
+    d.setDate(d.getDate() - diff);
+    return d.toISOString().slice(0, 10);
+}
+function isCurrentWeek(weekStr) { return weekStr === getFridayWeek(); }
+function isCurrentMonth(monthStr) {
+    const now = new Date();
+    return monthStr === now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+}
+
+// Timer
+let timer = null, remaining = 25*60, running = false;
+function formatTime(sec) { return String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0'); }
+function updateTimer() {
+    document.getElementById('timerDisplay').textContent = formatTime(remaining);
+    document.getElementById('timerSub').textContent = running ? 'Running' : (remaining === 0 ? 'Done' : 'Ready');
+}
+document.getElementById('startBtn').onclick = () => {
+    if (running) { clearInterval(timer); running = false; document.getElementById('startBtn').textContent = 'Start'; }
+    else {
+        remaining = (parseInt(document.getElementById('minInput').value) || 25) * 60;
+        running = true;
+        document.getElementById('startBtn').textContent = 'Pause';
+        sound('pop');
+        timer = setInterval(() => {
+            if (remaining > 0) { remaining--; updateTimer(); }
+            else {
+                clearInterval(timer); running = false;
+                document.getElementById('startBtn').textContent = 'Start';
+                sound('timer');
+                confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 } });
+                updateTimer();
+            }
+        }, 1000);
+    }
+    updateTimer();
+};
+document.getElementById('stopBtn').onclick = () => {
+    clearInterval(timer); running = false;
+    remaining = (parseInt(document.getElementById('minInput').value) || 25) * 60;
+    document.getElementById('startBtn').textContent = 'Start';
+    updateTimer();
+    sound('del');
+};
+document.getElementById('minInput').onchange = function() {
+    if (!running) remaining = (parseInt(this.value) || 25) * 60;
+    updateTimer();
+};
+
+// Navigation
+let previousViewBeforeSplit = 'weekly';
+document.querySelectorAll('.nav-item').forEach(el => {
+    el.onclick = () => {
+        const view = el.dataset.view;
+        if (view === 'split') {
+            openSplitView();
+            return;
+        }
+        previousViewBeforeSplit = view;
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        el.classList.add('active');
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById('view-' + view).classList.add('active');
+    };
+});
+
+// Tasks
+function renderTasks() {
+    const list = document.getElementById('task-list');
+    list.innerHTML = '';
+    const active = store.tasks.filter(t => !t.done).length;
+    document.getElementById('count-tasks').textContent = active + '/' + store.tasks.length;
+    store.tasks.forEach(t => {
+        list.innerHTML += `<div class="item task ${t.done?'done':''}" data-id="${t.id}">
+            <div class="chk"></div>
+            <div class="task-text">${esc(t.text)}</div>
+            <div class="actions"><button class="edit">✎</button><button class="del">✕</button></div>
+        </div>`;
+    });
+}
+function addTask() {
+    const text = document.getElementById('task-input').value.trim();
+    if (!text) return;
+    store.tasks.unshift({ id: ids.t++, text, done: false });
+    document.getElementById('task-input').value = '';
+    save('tasks'); renderTasks(); sound('pop');
+}
+document.getElementById('add-task').onclick = addTask;
+document.getElementById('task-input').onkeypress = e => { if (e.key === 'Enter') addTask(); };
+
+// Notes
+function renderNotes() {
+    const list = document.getElementById('note-list');
+    list.innerHTML = '';
+    document.getElementById('count-notes').textContent = store.notes.length;
+    store.notes.forEach(n => {
+        list.innerHTML += `<div class="item note" data-id="${n.id}"><textarea class="note-text" placeholder="Write note...">${esc(n.text)}</textarea><div class="actions"><button class="del">✕</button></div></div>`;
+    });
+    const full = document.getElementById('full-note-list');
+    if (full) {
+        full.innerHTML = '';
+        store.notes.forEach(n => {
+            full.innerHTML += `<div class="item note" data-id="${n.id}"><textarea class="note-text" placeholder="Write note...">${esc(n.text)}</textarea><div class="actions"><button class="del">✕</button></div></div>`;
+        });
+    }
+}
+function addNote() {
+    store.notes.unshift({ id: ids.n++, text: '' });
+    save('notes'); renderNotes(); sound('pop');
+    setTimeout(() => document.querySelector('.note textarea')?.focus(), 50);
+}
+document.getElementById('add-note').onclick = addNote;
+document.getElementById('add-note-full').onclick = addNote;
+
+function getPriorityTag(priority) {
+    const labels = {
+        'very-very-important': 'Very Very Important',
+        'important': 'Important',
+        'necessary': 'Necessary',
+        'good-to-done': 'Good to Done'
+    };
+    if (!priority || !labels[priority]) return '';
+    return `<span class="priority-tag ${priority}">${labels[priority]}</span>`;
+}
+
+// ===== DAILY GOALS — Tabbed Multi-Day System =====
+function getActiveDayId() {
+    const today = getTodayDate();
+    if (store.activeDayTab && store.days.find(d => d.dateId === store.activeDayTab)) {
+        return store.activeDayTab;
+    }
+    return today;
+}
+
+function renderDailyTabs() {
+    const today = getTodayDate();
+    if (!store.days.find(d => d.dateId === today)) {
+        store.days.unshift({ dateId: today, goals: [] });
+        save('days');
+    }
+    store.days.sort((a, b) => {
+        const aIsToday = a.dateId === today ? 1 : 0;
+        const bIsToday = b.dateId === today ? 1 : 0;
+        if (aIsToday !== bIsToday) return bIsToday - aIsToday;
+        return a.dateId > b.dateId ? -1 : 1;
+    });
+
+    const activeId = getActiveDayId();
+    const wrapper = document.getElementById('day-tabs-wrapper');
+    const list = document.getElementById('daily-list');
+    if (!wrapper || !list) return;
+
+    wrapper.innerHTML = '';
+    store.days.forEach(d => {
+        const isToday = d.dateId === today;
+        const isActive = d.dateId === activeId;
+        wrapper.innerHTML += `<div class="week-tab ${isActive ? 'active' : ''}" data-day="${d.dateId}">
+            ${isToday ? '<span class="running-dot"></span>' : ''}
+            <span>${formatDayLabel(d.dateId)}</span>
+            ${!isToday ? `<span class="tab-close" data-day-del="${d.dateId}" title="Remove day">✕</span>` : ''}
+        </div>`;
+    });
+    wrapper.innerHTML += `<div class="week-tab-add" id="add-day-tab" title="Pick date to add day tab">＋</div>`;
+
+    wrapper.querySelectorAll('.week-tab').forEach(tab => {
+        tab.onclick = (e) => {
+            if (e.target.classList.contains('tab-close')) return;
+            store.activeDayTab = tab.dataset.day;
+            save('activeDayTab');
+            renderDailyTabs();
+            renderSplitView();
+        };
+    });
+    wrapper.querySelectorAll('.tab-close').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            deleteDayTab(btn.dataset.dayDel);
+        };
+    });
+    const addBtn = document.getElementById('add-day-tab');
+    if (addBtn) {
+        addBtn.onclick = () => {
+            const picker = document.getElementById('daily-tab-picker');
+            if (picker) {
+                if (typeof picker.showPicker === 'function') picker.showPicker();
+                else { picker.focus(); picker.click(); }
+            }
+        };
+    }
+
+    const activeDay = store.days.find(d => d.dateId === activeId);
+    list.innerHTML = '';
+    if (!activeDay) {
+        list.innerHTML = '<div style="text-align:center;color:#555;padding:20px;font-size:0.85rem">No date selected</div>';
+        document.getElementById('daily-count').textContent = '0';
+        return;
+    }
+    const goals = activeDay.goals || [];
+    document.getElementById('daily-count').textContent = goals.length;
+    const isToday = activeId === today;
+
+    goals.forEach(g => {
+        list.innerHTML += `<div class="item goal daily-goal ${g.done?'done':''} ${isToday?'running':''}" data-id="${g.id}" data-day="${activeId}">
+            <div style="display:flex;gap:8px;align-items:flex-start">
+                <div class="chk"></div>
+                <div style="flex:1">
+                    <div class="goal-text">${esc(g.text)}${getPriorityTag(g.priority)}${isToday ? '<span class="running-tag">Running</span>' : ''}</div>
+                </div>
+                <div class="actions"><button class="edit">✎</button><button class="del">✕</button></div>
+            </div></div>`;
+    });
+}
+
+function deleteDayTab(dateId) {
+    store.days = store.days.filter(d => d.dateId !== dateId);
+    save('days');
+    if (store.activeDayTab === dateId) {
+        store.activeDayTab = store.days.length > 0 ? store.days[0].dateId : null;
+        save('activeDayTab');
+    }
+    renderDailyTabs();
+    renderSplitView();
+    updateProgress();
+}
+
+function addDailyGoal() {
+    const input = document.getElementById('daily-input');
+    const prioritySelect = document.getElementById('daily-priority');
+    const text = input ? input.value.trim() : '';
+    const priority = prioritySelect ? prioritySelect.value : '';
+    if (!text) return;
+    const activeId = getActiveDayId();
+    const day = store.days.find(d => d.dateId === activeId);
+    if (!day) return;
+    day.goals.unshift({ id: ids.dg++, text, done: false, priority });
+    if (input) input.value = '';
+    if (prioritySelect) prioritySelect.value = '';
+    save('days');
+    renderDailyTabs();
+    renderSplitView();
+    sound('pop');
+    updateProgress();
+}
+
+const dailyPickerEl = document.getElementById('daily-tab-picker');
+if (dailyPickerEl) {
+    dailyPickerEl.onchange = function() {
+        const val = this.value;
+        if (val) {
+            if (!store.days.find(d => d.dateId === val)) {
+                store.days.push({ dateId: val, goals: [] });
+                save('days');
+            }
+            store.activeDayTab = val;
+            save('activeDayTab');
+            renderDailyTabs();
+            renderSplitView();
+            this.value = '';
+        }
+    };
+}
+const addDailyBtnEl = document.getElementById('add-daily');
+if (addDailyBtnEl) addDailyBtnEl.onclick = addDailyGoal;
+const dailyInputEl = document.getElementById('daily-input');
+if (dailyInputEl) dailyInputEl.onkeypress = e => { if (e.key === 'Enter') addDailyGoal(); };
+
+// ===== WEEKLY GOALS — Tabbed Multi-Week System =====
+function getWeekLabel(weekId) {
+    // Parse the weekId (YYYY-MM-DD format — the Friday start) and return a readable label
+    const d = new Date(weekId + 'T00:00:00');
+    const end = new Date(d);
+    end.setDate(end.getDate() + 6);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[d.getMonth()] + ' ' + d.getDate() + ' – ' + months[end.getMonth()] + ' ' + end.getDate();
+}
+
+function getActiveWeekId() {
+    const currentWeekId = getFridayWeek();
+    // If user has a selected tab, use it; otherwise default to current week
+    if (store.activeWeekTab && store.weeks.find(w => w.weekId === store.activeWeekTab)) {
+        return store.activeWeekTab;
+    }
+    return currentWeekId;
+}
+
+function addNewWeekTab() {
+    const currentWeekId = getFridayWeek();
+    if (store.weeks.length === 0) {
+        store.weeks.push({ weekId: currentWeekId, label: getWeekLabel(currentWeekId), goals: [] });
+    } else {
+        const allWeekDates = store.weeks.map(w => new Date(w.weekId + 'T00:00:00')).sort((a,b) => b - a);
+        const latest = allWeekDates[0];
+        const nextFriday = new Date(latest);
+        nextFriday.setDate(nextFriday.getDate() + 7);
+        const nextId = nextFriday.toISOString().slice(0,10);
+        if (store.weeks.find(w => w.weekId === nextId)) return;
+        store.weeks.push({ weekId: nextId, label: getWeekLabel(nextId), goals: [] });
+    }
+    save('weeks');
+    store.activeWeekTab = store.weeks[store.weeks.length - 1].weekId;
+    save('activeWeekTab');
+    renderWeeklyTabs();
+    renderSplitView();
+}
+
+function deleteWeekTab(weekId) {
+    store.weeks = store.weeks.filter(w => w.weekId !== weekId);
+    save('weeks');
+    if (store.activeWeekTab === weekId) {
+        store.activeWeekTab = store.weeks.length > 0 ? store.weeks[0].weekId : null;
+        save('activeWeekTab');
+    }
+    renderWeeklyTabs();
+    renderSplitView();
+    updateProgress();
+}
+
+function switchWeekTab(weekId) {
+    store.activeWeekTab = weekId;
+    save('activeWeekTab');
+    renderWeeklyTabs();
+    renderSplitView();
+}
+
+function renderWeeklyTabs() {
+    const wrapper = document.getElementById('week-tabs-wrapper');
+    const list = document.getElementById('weekly-list');
+    const currentWeekId = getFridayWeek();
+
+    if (!store.weeks.find(w => w.weekId === currentWeekId)) {
+        store.weeks.unshift({ weekId: currentWeekId, label: getWeekLabel(currentWeekId), goals: [] });
+        save('weeks');
+    }
+
+    store.weeks.sort((a, b) => {
+        const aIsCurrent = a.weekId === currentWeekId ? 1 : 0;
+        const bIsCurrent = b.weekId === currentWeekId ? 1 : 0;
+        if (aIsCurrent !== bIsCurrent) return bIsCurrent - aIsCurrent;
+        return a.weekId > b.weekId ? -1 : 1;
+    });
+
+    const activeId = getActiveWeekId();
+    wrapper.innerHTML = '';
+    store.weeks.forEach(w => {
+        const isCurrent = w.weekId === currentWeekId;
+        const isActive = w.weekId === activeId;
+        wrapper.innerHTML += `<div class="week-tab ${isActive ? 'active' : ''}" data-week="${w.weekId}">
+            ${isCurrent ? '<span class="running-dot"></span>' : ''}
+            <span>${getWeekLabel(w.weekId)}</span>
+            ${!isCurrent ? `<span class="tab-close" data-week-del="${w.weekId}" title="Remove week">✕</span>` : ''}
+        </div>`;
+    });
+    wrapper.innerHTML += `<div class="week-tab-add" id="add-week-tab" title="Add new week">＋</div>`;
+
+    wrapper.querySelectorAll('.week-tab').forEach(tab => {
+        tab.onclick = (e) => {
+            if (e.target.classList.contains('tab-close')) return;
+            switchWeekTab(tab.dataset.week);
+        };
+    });
+    wrapper.querySelectorAll('.tab-close').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            deleteWeekTab(btn.dataset.weekDel);
+        };
+    });
+    const addWkBtn = document.getElementById('add-week-tab');
+    if (addWkBtn) addWkBtn.onclick = addNewWeekTab;
+
+    const activeWeek = store.weeks.find(w => w.weekId === activeId);
+    list.innerHTML = '';
+    if (!activeWeek) {
+        list.innerHTML = '<div style="text-align:center;color:#555;padding:20px;font-size:0.85rem">No week selected</div>';
+        document.getElementById('weekly-count').textContent = '0';
+        return;
+    }
+    const goals = activeWeek.goals || [];
+    document.getElementById('weekly-count').textContent = goals.length;
+    const isCurrent = activeId === currentWeekId;
+
+    goals.forEach(g => {
+        list.innerHTML += `<div class="item goal weekly-goal ${g.done?'done':''} ${isCurrent?'running':''}" data-id="${g.id}" data-week="${activeId}">
+            <div style="display:flex;gap:8px;align-items:flex-start">
+                <div class="chk"></div>
+                <div style="flex:1">
+                    <div class="goal-text">${esc(g.text)}${getPriorityTag(g.priority)}${isCurrent ? '<span class="running-tag">Running</span>' : ''}</div>
+                </div>
+                <div class="actions"><button class="edit">✎</button><button class="del">✕</button></div>
+            </div></div>`;
+    });
+}
+
+function addWeeklyGoal() {
+    const input = document.getElementById('weekly-input');
+    const prioritySelect = document.getElementById('weekly-priority');
+    const text = input ? input.value.trim() : '';
+    const priority = prioritySelect ? prioritySelect.value : '';
+    if (!text) return;
+    const activeId = getActiveWeekId();
+    const week = store.weeks.find(w => w.weekId === activeId);
+    if (!week) return;
+    week.goals.unshift({ id: ids.wg++, text, done: false, priority });
+    if (input) input.value = '';
+    if (prioritySelect) prioritySelect.value = '';
+    save('weeks');
+    renderWeeklyTabs();
+    renderSplitView();
+    sound('pop');
+    updateProgress();
+}
+
+const addWeeklyBtn = document.getElementById('add-weekly');
+if (addWeeklyBtn) addWeeklyBtn.onclick = () => addWeeklyGoal();
+const weeklyInput = document.getElementById('weekly-input');
+if (weeklyInput) weeklyInput.onkeypress = e => { if (e.key === 'Enter') addWeeklyGoal(); };
+
+// ===== MONTHLY GOALS — Tabbed Multi-Month System =====
+function getCurrentMonthId() {
+    const now = new Date();
+    return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+}
+
+function getMonthLabel(monthId) {
+    const [year, month] = monthId.split('-');
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return months[parseInt(month) - 1] + ' ' + year;
+}
+
+function getActiveMonthId() {
+    const currentMonthId = getCurrentMonthId();
+    if (store.activeMonthTab && store.months.find(m => m.monthId === store.activeMonthTab)) {
+        return store.activeMonthTab;
+    }
+    return currentMonthId;
+}
+
+function addNewMonthTab() {
+    const currentMonthId = getCurrentMonthId();
+    if (store.months.length === 0) {
+        store.months.push({ monthId: currentMonthId, goals: [] });
+    } else {
+        const allMonthDates = store.months.map(m => {
+            const [y, mo] = m.monthId.split('-');
+            return new Date(parseInt(y), parseInt(mo) - 1, 1);
+        }).sort((a, b) => b - a);
+        const latest = allMonthDates[0];
+        const nextMonth = new Date(latest);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        const nextId = nextMonth.getFullYear() + '-' + String(nextMonth.getMonth() + 1).padStart(2, '0');
+        if (store.months.find(m => m.monthId === nextId)) return;
+        store.months.push({ monthId: nextId, goals: [] });
+    }
+    save('months');
+    store.activeMonthTab = store.months[store.months.length - 1].monthId;
+    save('activeMonthTab');
+    renderMonthlyTabs();
+    renderSplitView();
+}
+
+function deleteMonthTab(monthId) {
+    store.months = store.months.filter(m => m.monthId !== monthId);
+    save('months');
+    if (store.activeMonthTab === monthId) {
+        store.activeMonthTab = store.months.length > 0 ? store.months[0].monthId : null;
+        save('activeMonthTab');
+    }
+    renderMonthlyTabs();
+    renderSplitView();
+    updateProgress();
+}
+
+function switchMonthTab(monthId) {
+    store.activeMonthTab = monthId;
+    save('activeMonthTab');
+    renderMonthlyTabs();
+    renderSplitView();
+}
+
+function renderMonthlyTabs() {
+    const wrapper = document.getElementById('month-tabs-wrapper');
+    const list = document.getElementById('monthly-list');
+    const currentMonthId = getCurrentMonthId();
+
+    if (!store.months.find(m => m.monthId === currentMonthId)) {
+        store.months.unshift({ monthId: currentMonthId, goals: [] });
+        save('months');
+    }
+
+    store.months.sort((a, b) => {
+        const aIsCurrent = a.monthId === currentMonthId ? 1 : 0;
+        const bIsCurrent = b.monthId === currentMonthId ? 1 : 0;
+        if (aIsCurrent !== bIsCurrent) return bIsCurrent - aIsCurrent;
+        return a.monthId > b.monthId ? -1 : 1;
+    });
+
+    const activeId = getActiveMonthId();
+    wrapper.innerHTML = '';
+    store.months.forEach(m => {
+        const isCurrent = m.monthId === currentMonthId;
+        const isActive = m.monthId === activeId;
+        wrapper.innerHTML += `<div class="week-tab ${isActive ? 'active' : ''}" data-month="${m.monthId}">
+            ${isCurrent ? '<span class="running-dot"></span>' : ''}
+            <span>${getMonthLabel(m.monthId)}</span>
+            ${!isCurrent ? `<span class="tab-close" data-month-del="${m.monthId}" title="Remove month">✕</span>` : ''}
+        </div>`;
+    });
+    wrapper.innerHTML += `<div class="week-tab-add" id="add-month-tab" title="Add new month">＋</div>`;
+
+    wrapper.querySelectorAll('.week-tab').forEach(tab => {
+        tab.onclick = (e) => {
+            if (e.target.classList.contains('tab-close')) return;
+            switchMonthTab(tab.dataset.month);
+        };
+    });
+    wrapper.querySelectorAll('.tab-close').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            deleteMonthTab(btn.dataset.monthDel);
+        };
+    });
+    const addMoBtn = document.getElementById('add-month-tab');
+    if (addMoBtn) addMoBtn.onclick = addNewMonthTab;
+
+    const activeMonth = store.months.find(m => m.monthId === activeId);
+    list.innerHTML = '';
+    if (!activeMonth) {
+        list.innerHTML = '<div style="text-align:center;color:#555;padding:20px;font-size:0.85rem">No month selected</div>';
+        document.getElementById('monthly-count').textContent = '0';
+        return;
+    }
+    const goals = activeMonth.goals || [];
+    document.getElementById('monthly-count').textContent = goals.length;
+    const isCurrent = activeId === currentMonthId;
+
+    goals.forEach(g => {
+        list.innerHTML += `<div class="item goal monthly-goal ${g.done?'done':''} ${isCurrent?'running':''}" data-id="${g.id}" data-month="${activeId}">
+            <div style="display:flex;gap:8px;align-items:flex-start">
+                <div class="chk"></div>
+                <div style="flex:1">
+                    <div class="goal-text">${esc(g.text)}${getPriorityTag(g.priority)}${isCurrent ? '<span class="running-tag">Running</span>' : ''}</div>
+                </div>
+                <div class="actions"><button class="edit">✎</button><button class="del">✕</button></div>
+            </div></div>`;
+    });
+}
+
+function addMonthlyGoal() {
+    const input = document.getElementById('monthly-input');
+    const prioritySelect = document.getElementById('monthly-priority');
+    const text = input ? input.value.trim() : '';
+    const priority = prioritySelect ? prioritySelect.value : '';
+    if (!text) return;
+    const activeId = getActiveMonthId();
+    const month = store.months.find(m => m.monthId === activeId);
+    if (!month) return;
+    month.goals.unshift({ id: ids.mg++, text, done: false, priority });
+    if (input) input.value = '';
+    if (prioritySelect) prioritySelect.value = '';
+    save('months');
+    renderMonthlyTabs();
+    renderSplitView();
+    sound('pop');
+    updateProgress();
+}
+
+const addMonthlyBtn = document.getElementById('add-monthly');
+if (addMonthlyBtn) addMonthlyBtn.onclick = () => addMonthlyGoal();
+const monthlyInput = document.getElementById('monthly-input');
+if (monthlyInput) monthlyInput.onkeypress = e => { if (e.key === 'Enter') addMonthlyGoal(); };
+
+// ===== YEARLY GOALS — Running & Upcoming Year System (Max 2 Tabs) =====
+function getCurrentYearId() {
+    return String(new Date().getFullYear());
+}
+
+function getUpcomingYearId() {
+    return String(new Date().getFullYear() + 1);
+}
+
+function getActiveYearId() {
+    const currentYearId = getCurrentYearId();
+    if (store.activeYearTab && store.years.find(y => y.yearId === store.activeYearTab)) {
+        return store.activeYearTab;
+    }
+    return currentYearId;
+}
+
+function addNewYearTab() {
+    const upcomingYearId = getUpcomingYearId();
+    if (store.years.length >= 2 || store.years.find(y => y.yearId === upcomingYearId)) {
+        return;
+    }
+    store.years.push({ yearId: upcomingYearId, goals: [] });
+    save('years');
+    store.activeYearTab = upcomingYearId;
+    save('activeYearTab');
+    renderYearlyTabs();
+    renderSplitView();
+    sound('pop');
+}
+
+function deleteYearTab(yearId) {
+    const currentYearId = getCurrentYearId();
+    if (yearId === currentYearId) {
+        alert('Cannot remove the running year tab.');
+        return;
+    }
+    store.years = store.years.filter(y => y.yearId !== yearId);
+    save('years');
+    if (store.activeYearTab === yearId) {
+        store.activeYearTab = currentYearId;
+        save('activeYearTab');
+    }
+    renderYearlyTabs();
+    renderSplitView();
+    updateProgress();
+    sound('del');
+}
+
+function switchYearTab(yearId) {
+    store.activeYearTab = yearId;
+    save('activeYearTab');
+    renderYearlyTabs();
+    renderSplitView();
+}
+
+function renderYearlyTabs() {
+    const wrapper = document.getElementById('year-tabs-wrapper');
+    const list = document.getElementById('yearly-list');
+    const currentYearId = getCurrentYearId();
+    const upcomingYearId = getUpcomingYearId();
+
+    if (!store.years.find(y => y.yearId === currentYearId)) {
+        store.years.unshift({ yearId: currentYearId, goals: [] });
+        save('years');
+    }
+
+    store.years.sort((a, b) => {
+        const aIsCurrent = a.yearId === currentYearId ? 1 : 0;
+        const bIsCurrent = b.yearId === currentYearId ? 1 : 0;
+        if (aIsCurrent !== bIsCurrent) return bIsCurrent - aIsCurrent;
+        return a.yearId > b.yearId ? -1 : 1;
+    });
+
+    const activeId = getActiveYearId();
+    if (!wrapper || !list) return;
+
+    wrapper.innerHTML = '';
+    store.years.forEach(y => {
+        const isCurrent = y.yearId === currentYearId;
+        const isActive = y.yearId === activeId;
+        wrapper.innerHTML += `<div class="week-tab ${isActive ? 'active' : ''}" data-year="${y.yearId}">
+            ${isCurrent ? '<span class="running-dot"></span>' : ''}
+            <span>${y.yearId}</span>
+            ${!isCurrent ? `<span class="tab-close" data-year-del="${y.yearId}" title="Remove year">✕</span>` : ''}
+        </div>`;
+    });
+
+    if (store.years.length < 2 && !store.years.find(y => y.yearId === upcomingYearId)) {
+        wrapper.innerHTML += `<div class="week-tab-add" id="add-year-tab" title="Add upcoming year (${upcomingYearId})">＋</div>`;
+    }
+
+    wrapper.querySelectorAll('.week-tab').forEach(tab => {
+        tab.onclick = (e) => {
+            if (e.target.classList.contains('tab-close')) return;
+            switchYearTab(tab.dataset.year);
+        };
+    });
+    wrapper.querySelectorAll('.tab-close').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            deleteYearTab(btn.dataset.yearDel);
+        };
+    });
+    const addYrBtn = document.getElementById('add-year-tab');
+    if (addYrBtn) addYrBtn.onclick = addNewYearTab;
+
+    const activeYear = store.years.find(y => y.yearId === activeId);
+    list.innerHTML = '';
+    const countEl = document.getElementById('yearly-count');
+    if (!activeYear) {
+        list.innerHTML = '<div style="text-align:center;color:#555;padding:20px;font-size:0.85rem">No year selected</div>';
+        if (countEl) countEl.textContent = '0';
+        return;
+    }
+    const goals = activeYear.goals || [];
+    if (countEl) countEl.textContent = goals.length;
+    const isCurrent = activeId === currentYearId;
+
+    goals.forEach(g => {
+        list.innerHTML += `<div class="item goal yearly-goal ${g.done?'done':''} ${isCurrent?'running':''}" data-id="${g.id}" data-year="${activeId}">
+            <div style="display:flex;gap:8px;align-items:flex-start">
+                <div class="chk"></div>
+                <div style="flex:1">
+                    <div class="goal-text">${esc(g.text)}${getPriorityTag(g.priority)}${isCurrent ? '<span class="running-tag">Running</span>' : ''}</div>
+                </div>
+                <div class="actions"><button class="edit">✎</button><button class="del">✕</button></div>
+            </div></div>`;
+    });
+}
+
+function addYearlyGoal() {
+    const input = document.getElementById('yearly-input');
+    const prioritySelect = document.getElementById('yearly-priority');
+    const text = input ? input.value.trim() : '';
+    const priority = prioritySelect ? prioritySelect.value : '';
+    if (!text) return;
+    const activeId = getActiveYearId();
+    const year = store.years.find(y => y.yearId === activeId);
+    if (!year) return;
+    year.goals.unshift({ id: ids.yg++, text, done: false, priority });
+    if (input) input.value = '';
+    if (prioritySelect) prioritySelect.value = '';
+    save('years');
+    renderYearlyTabs();
+    renderSplitView();
+    sound('pop');
+    updateProgress();
+}
+
+const addYearlyBtn = document.getElementById('add-yearly');
+if (addYearlyBtn) addYearlyBtn.onclick = () => addYearlyGoal();
+const yearlyInput = document.getElementById('yearly-input');
+if (yearlyInput) yearlyInput.onkeypress = e => { if (e.key === 'Enter') addYearlyGoal(); };
+
+// ===== NAMAZ TIMETABLE — Max 12 Tabs System =====
+function getActiveNamazTabId() {
+    if (store.activeNamazTab && store.namazTabs.find(t => t.tabId === store.activeNamazTab)) {
+        return store.activeNamazTab;
+    }
+    return (store.namazTabs && store.namazTabs.length > 0) ? store.namazTabs[0].tabId : 'tab_main';
+}
+
+function addNewNamazTab() {
+    if (!Array.isArray(store.namazTabs)) store.namazTabs = [];
+    if (store.namazTabs.length >= 12) {
+        alert('Maximum 12 tabs allowed for Namaz Timetable.');
+        return;
+    }
+    let nextNum = store.namazTabs.length + 1;
+    let nextName = 'Timetable ' + nextNum;
+    while (store.namazTabs.some(t => t.name.toLowerCase() === nextName.toLowerCase())) {
+        nextNum++;
+        nextName = 'Timetable ' + nextNum;
+    }
+    const newId = 'nm_tab_' + Date.now();
+    store.namazTabs.push({ tabId: newId, name: nextName, items: [] });
+    store.activeNamazTab = newId;
+    save('namazTabs');
+    save('activeNamazTab');
+    renderNamazTabs();
+    sound('pop');
+}
+
+function renameNamazTab(tabId, tabEl) {
+    const tab = store.namazTabs.find(t => t.tabId === tabId);
+    if (!tab) return;
+    const titleSpan = tabEl.querySelector('.tab-title');
+    if (!titleSpan) return;
+    const currentName = tab.name;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentName;
+    input.className = 'edit-input';
+    input.style.cssText = 'width:80px;padding:2px 4px;font-size:0.78rem;background:rgba(255,255,255,0.12);border:1px solid #7c5cfc;border-radius:4px;color:#fff;outline:none;';
+    titleSpan.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let committed = false;
+    const commit = () => {
+        if (committed) return;
+        committed = true;
+        const newName = input.value.trim() || currentName;
+        tab.name = newName;
+        save('namazTabs');
+        renderNamazTabs();
+    };
+    input.onblur = commit;
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter') { input.blur(); }
+        if (e.key === 'Escape') { input.value = currentName; input.blur(); }
+    };
+}
+
+function deleteNamazTab(tabId) {
+    if (store.namazTabs.length <= 1) {
+        alert('At least one timetable tab must remain.');
+        return;
+    }
+    store.namazTabs = store.namazTabs.filter(t => t.tabId !== tabId);
+    save('namazTabs');
+    if (store.activeNamazTab === tabId) {
+        store.activeNamazTab = store.namazTabs[0].tabId;
+        save('activeNamazTab');
+    }
+    renderNamazTabs();
+    sound('del');
+}
+
+function renderNamazTabs() {
+    if (!Array.isArray(store.namazTabs) || store.namazTabs.length === 0) {
+        let oldNamaz = [];
+        try { oldNamaz = JSON.parse(localStorage.getItem('ff_namaz') || '[]'); } catch(e) {}
+        store.namazTabs = [{ tabId: 'tab_main', name: 'Main Schedule', items: Array.isArray(oldNamaz) ? oldNamaz : [] }];
+        store.activeNamazTab = 'tab_main';
+        save('namazTabs');
+        save('activeNamazTab');
+    }
+    const activeId = getActiveNamazTabId();
+    const wrapper = document.getElementById('namaz-tabs-wrapper');
+    const list = document.getElementById('namaz-list');
+    const countIndicator = document.getElementById('namaz-tab-count');
+    if (countIndicator) countIndicator.textContent = `(${store.namazTabs.length}/12 tabs)`;
+
+    if (!wrapper || !list) return;
+
+    wrapper.innerHTML = '';
+    store.namazTabs.forEach(t => {
+        const isActive = t.tabId === activeId;
+        wrapper.innerHTML += `<div class="week-tab ${isActive ? 'active' : ''}" data-namaz-tab="${t.tabId}">
+            <span class="tab-title" title="Double-click to rename">${esc(t.name)}</span>
+            <span class="tab-rename" data-namaz-rename="${t.tabId}" title="Rename tab" style="font-size:0.7rem;color:#777;cursor:pointer;padding:0 2px">✎</span>
+            ${store.namazTabs.length > 1 ? `<span class="tab-close" data-namaz-del="${t.tabId}" title="Remove tab">✕</span>` : ''}
+        </div>`;
+    });
+    if (store.namazTabs.length < 12) {
+        wrapper.innerHTML += `<div class="week-tab-add" id="add-namaz-tab" title="Add new timetable tab (max 12)">＋</div>`;
+    } else {
+        wrapper.innerHTML += `<div class="week-tab-add disabled" title="Max 12 tabs reached" style="opacity:0.4;cursor:not-allowed">Max</div>`;
+    }
+
+    wrapper.querySelectorAll('.week-tab').forEach(tab => {
+        tab.onclick = (e) => {
+            if (e.target.classList.contains('tab-close')) return;
+            if (e.target.classList.contains('tab-rename')) {
+                e.stopPropagation();
+                renameNamazTab(e.target.dataset.namazRename, tab);
+                return;
+            }
+            store.activeNamazTab = tab.dataset.namazTab;
+            save('activeNamazTab');
+            renderNamazTabs();
+        };
+        tab.ondblclick = (e) => {
+            if (e.target.classList.contains('tab-close')) return;
+            renameNamazTab(tab.dataset.namazTab, tab);
+        };
+    });
+    wrapper.querySelectorAll('.tab-close').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            deleteNamazTab(btn.dataset.namazDel);
+        };
+    });
+    const addTabBtn = document.getElementById('add-namaz-tab');
+    if (addTabBtn) addTabBtn.onclick = addNewNamazTab;
+
+    const activeTab = store.namazTabs.find(t => t.tabId === activeId);
+    list.innerHTML = '';
+    if (!activeTab) {
+        document.getElementById('namaz-count').textContent = '0';
+        return;
+    }
+    const items = activeTab.items || [];
+    document.getElementById('namaz-count').textContent = items.length;
+    items.forEach(n => {
+        list.innerHTML += `<div class="item namaz-item" data-id="${n.id}" data-tab="${activeId}">
+            <div class="namaz-time">${esc(n.time)} — ${esc(n.name)}</div>
+            <div class="namaz-text">${esc(n.note || '')}</div>
+            <div class="actions"><button class="edit">✎</button><button class="del">✕</button></div>
+        </div>`;
+    });
+}
+
+function addNamazItem() {
+    const nameInput = document.getElementById('namaz-name');
+    const timeInput = document.getElementById('namaz-time');
+    const noteInput = document.getElementById('namaz-note');
+    const name = nameInput ? nameInput.value.trim() : '';
+    const time = timeInput ? timeInput.value : '';
+    const note = noteInput ? noteInput.value.trim() : '';
+    if (!name || !time) return;
+    const activeId = getActiveNamazTabId();
+    let tab = store.namazTabs.find(t => t.tabId === activeId);
+    if (!tab) {
+        tab = store.namazTabs[0];
+        store.activeNamazTab = tab ? tab.tabId : 'tab_main';
+    }
+    if (!tab) return;
+    if (!Array.isArray(tab.items)) tab.items = [];
+    tab.items.unshift({ id: ids.nm++, name, time, note });
+    if (nameInput) nameInput.value = '';
+    if (timeInput) timeInput.value = '';
+    if (noteInput) noteInput.value = '';
+    save('namazTabs');
+    renderNamazTabs();
+    sound('pop');
+}
+const addNamazBtn = document.getElementById('add-namaz');
+if (addNamazBtn) addNamazBtn.onclick = addNamazItem;
+const namazNameInput = document.getElementById('namaz-name');
+if (namazNameInput) namazNameInput.onkeypress = e => { if (e.key === 'Enter') addNamazItem(); };
+const namazTimeInput = document.getElementById('namaz-time');
+if (namazTimeInput) namazTimeInput.onkeypress = e => { if (e.key === 'Enter') addNamazItem(); };
+
+// ===== SPLIT SCREEN VIEW =====
+function openSplitView(initialView) {
+    if (initialView) {
+        previousViewBeforeSplit = initialView;
+        if (initialView === 'yearly') {
+            store.splitLeft = 'yearly';
+            store.splitRight = 'weekly';
+        } else if (initialView === 'monthly') {
+            store.splitLeft = 'monthly';
+            store.splitRight = 'weekly';
+        } else if (initialView === 'weekly') {
+            store.splitLeft = 'weekly';
+            store.splitRight = 'monthly';
+        } else if (initialView === 'daily') {
+            store.splitLeft = 'daily';
+            store.splitRight = 'weekly';
+        }
+    } else {
+        if (!store.splitLeft) store.splitLeft = 'monthly';
+        if (!store.splitRight) store.splitRight = 'weekly';
+    }
+    save('splitLeft');
+    save('splitRight');
+
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const splitNav = document.querySelector('.nav-item[data-view="split"]');
+    if (splitNav) splitNav.classList.add('active');
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-split').classList.add('active');
+    renderSplitView();
+}
+
+function exitSplitView() {
+    const target = previousViewBeforeSplit || 'weekly';
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const targetNav = document.querySelector(`.nav-item[data-view="${target}"]`);
+    if (targetNav) targetNav.classList.add('active');
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + target).classList.add('active');
+}
+
+function setSplitPaneView(side, type) {
+    if (side === 'left') {
+        store.splitLeft = type;
+        save('splitLeft');
+    } else {
+        store.splitRight = type;
+        save('splitRight');
+    }
+    renderSplitView();
+}
+
+function renderSplitView() {
+    const splitView = document.getElementById('view-split');
+    if (!splitView || !splitView.classList.contains('active')) return;
+
+    ['left', 'right'].forEach(side => {
+        const currentType = side === 'left' ? store.splitLeft : store.splitRight;
+        const pills = document.querySelectorAll(`#split-${side}-pills .split-pill`);
+        pills.forEach(p => {
+            if (p.textContent.toLowerCase().includes(currentType)) {
+                p.classList.add('active');
+            } else {
+                p.classList.remove('active');
+            }
+        });
+        renderPaneBoard(side, currentType);
+    });
+}
+
+function renderPaneBoard(side, type) {
+    const container = document.getElementById(`split-${side}-content`);
+    if (!container) return;
+
+    if (type === 'daily') {
+        const today = getTodayDate();
+        if (!store.days.find(d => d.dateId === today)) {
+            store.days.unshift({ dateId: today, goals: [] });
+            save('days');
+        }
+        store.days.sort((a, b) => {
+            const aIsToday = a.dateId === today ? 1 : 0;
+            const bIsToday = b.dateId === today ? 1 : 0;
+            if (aIsToday !== bIsToday) return bIsToday - aIsToday;
+            return a.dateId > b.dateId ? -1 : 1;
+        });
+        const activeId = getActiveDayId();
+        const activeDay = store.days.find(d => d.dateId === activeId);
+        const goals = activeDay ? (activeDay.goals || []) : [];
+        const isToday = activeId === today;
+
+        let tabsHtml = '';
+        store.days.forEach(d => {
+            const isT = d.dateId === today;
+            const isA = d.dateId === activeId;
+            tabsHtml += `<div class="week-tab ${isA ? 'active' : ''}" data-pane-day="${d.dateId}">
+                ${isT ? '<span class="running-dot"></span>' : ''}
+                <span>${formatDayLabel(d.dateId)}</span>
+                ${!isT ? `<span class="tab-close" data-pane-day-del="${d.dateId}">✕</span>` : ''}
+            </div>`;
+        });
+        tabsHtml += `<div class="week-tab-add" id="split-${side}-add-day-tab" title="Pick date">＋</div>`;
+
+        let listHtml = '';
+        goals.forEach(g => {
+            listHtml += `<div class="item goal daily-goal ${g.done?'done':''} ${isToday?'running':''}" data-id="${g.id}" data-day="${activeId}">
+                <div style="display:flex;gap:8px;align-items:flex-start">
+                    <div class="chk"></div>
+                    <div style="flex:1">
+                        <div class="goal-text">${esc(g.text)}${getPriorityTag(g.priority)}${isToday ? '<span class="running-tag">Running</span>' : ''}</div>
+                    </div>
+                    <div class="actions"><button class="edit">✎</button><button class="del">✕</button></div>
+                </div></div>`;
+        });
+
+        container.innerHTML = `
+            <div class="week-tabs-wrapper">${tabsHtml}</div>
+            <div class="list split-list">${listHtml || '<div style="text-align:center;color:#555;padding:16px;font-size:0.8rem">No goals yet</div>'}</div>
+            <div class="add-row">
+                <input type="text" id="split-${side}-input" placeholder="Add daily goal...">
+                <select class="priority-select" id="split-${side}-priority">
+                    <option value="">No Priority</option>
+                    <option value="very-very-important">🔴 Very Very Important</option>
+                    <option value="important">🟠 Important</option>
+                    <option value="necessary">🟡 Necessary</option>
+                    <option value="good-to-done">🟢 Good to Done</option>
+                </select>
+                <button class="btn-add" id="split-${side}-btn">Add Goal</button>
+            </div>
+        `;
+
+        container.querySelectorAll('[data-pane-day]').forEach(tab => {
+            tab.onclick = (e) => {
+                if (e.target.classList.contains('tab-close')) return;
+                store.activeDayTab = tab.dataset.paneDay;
+                save('activeDayTab');
+                renderDailyTabs();
+                renderSplitView();
+            };
+        });
+        container.querySelectorAll('[data-pane-day-del]').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                deleteDayTab(btn.dataset.paneDayDel);
+            };
+        });
+        const addTabBtn = document.getElementById(`split-${side}-add-day-tab`);
+        if (addTabBtn) {
+            addTabBtn.onclick = () => {
+                const picker = document.getElementById('daily-tab-picker');
+                if (picker) {
+                    if (typeof picker.showPicker === 'function') picker.showPicker();
+                    else { picker.focus(); picker.click(); }
+                }
+            };
+        }
+
+        const addBtn = document.getElementById(`split-${side}-btn`);
+        const addInput = document.getElementById(`split-${side}-input`);
+        const addPrio = document.getElementById(`split-${side}-priority`);
+        const submitGoal = () => {
+            const text = addInput.value.trim();
+            if (!text) return;
+            const day = store.days.find(d => d.dateId === activeId);
+            if (!day) return;
+            day.goals.unshift({ id: ids.dg++, text, done: false, priority: addPrio.value });
+            save('days');
+            renderDailyTabs();
+            renderSplitView();
+            sound('pop');
+            updateProgress();
+        };
+        if (addBtn) addBtn.onclick = submitGoal;
+        if (addInput) addInput.onkeypress = e => { if (e.key === 'Enter') submitGoal(); };
+
+    } else if (type === 'weekly') {
+        const currentWeekId = getFridayWeek();
+        if (!store.weeks.find(w => w.weekId === currentWeekId)) {
+            store.weeks.unshift({ weekId: currentWeekId, label: getWeekLabel(currentWeekId), goals: [] });
+            save('weeks');
+        }
+        store.weeks.sort((a, b) => {
+            const aIsCurrent = a.weekId === currentWeekId ? 1 : 0;
+            const bIsCurrent = b.weekId === currentWeekId ? 1 : 0;
+            if (aIsCurrent !== bIsCurrent) return bIsCurrent - aIsCurrent;
+            return a.weekId > b.weekId ? -1 : 1;
+        });
+        const activeId = getActiveWeekId();
+        const activeWeek = store.weeks.find(w => w.weekId === activeId);
+        const goals = activeWeek ? (activeWeek.goals || []) : [];
+        const isCurrent = activeId === currentWeekId;
+
+        let tabsHtml = '';
+        store.weeks.forEach(w => {
+            const isC = w.weekId === currentWeekId;
+            const isA = w.weekId === activeId;
+            tabsHtml += `<div class="week-tab ${isA ? 'active' : ''}" data-pane-week="${w.weekId}">
+                ${isC ? '<span class="running-dot"></span>' : ''}
+                <span>${getWeekLabel(w.weekId)}</span>
+                ${!isC ? `<span class="tab-close" data-pane-week-del="${w.weekId}">✕</span>` : ''}
+            </div>`;
+        });
+        tabsHtml += `<div class="week-tab-add" id="split-${side}-add-week-tab" title="Add new week">＋</div>`;
+
+        let listHtml = '';
+        goals.forEach(g => {
+            listHtml += `<div class="item goal weekly-goal ${g.done?'done':''} ${isCurrent?'running':''}" data-id="${g.id}" data-week="${activeId}">
+                <div style="display:flex;gap:8px;align-items:flex-start">
+                    <div class="chk"></div>
+                    <div style="flex:1">
+                        <div class="goal-text">${esc(g.text)}${getPriorityTag(g.priority)}${isCurrent ? '<span class="running-tag">Running</span>' : ''}</div>
+                    </div>
+                    <div class="actions"><button class="edit">✎</button><button class="del">✕</button></div>
+                </div></div>`;
+        });
+
+        container.innerHTML = `
+            <div class="week-tabs-wrapper">${tabsHtml}</div>
+            <div class="list split-list">${listHtml || '<div style="text-align:center;color:#555;padding:16px;font-size:0.8rem">No goals yet</div>'}</div>
+            <div class="add-row">
+                <input type="text" id="split-${side}-input" placeholder="Add weekly goal...">
+                <select class="priority-select" id="split-${side}-priority">
+                    <option value="">No Priority</option>
+                    <option value="very-very-important">🔴 Very Very Important</option>
+                    <option value="important">🟠 Important</option>
+                    <option value="necessary">🟡 Necessary</option>
+                    <option value="good-to-done">🟢 Good to Done</option>
+                </select>
+                <button class="btn-add" id="split-${side}-btn">Add Goal</button>
+            </div>
+        `;
+
+        container.querySelectorAll('[data-pane-week]').forEach(tab => {
+            tab.onclick = (e) => {
+                if (e.target.classList.contains('tab-close')) return;
+                switchWeekTab(tab.dataset.paneWeek);
+                renderSplitView();
+            };
+        });
+        container.querySelectorAll('[data-pane-week-del]').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                deleteWeekTab(btn.dataset.paneWeekDel);
+                renderSplitView();
+            };
+        });
+        const addTabBtn = document.getElementById(`split-${side}-add-week-tab`);
+        if (addTabBtn) {
+            addTabBtn.onclick = () => {
+                addNewWeekTab();
+                renderSplitView();
+            };
+        }
+
+        const addBtn = document.getElementById(`split-${side}-btn`);
+        const addInput = document.getElementById(`split-${side}-input`);
+        const addPrio = document.getElementById(`split-${side}-priority`);
+        const submitGoal = () => {
+            const text = addInput.value.trim();
+            if (!text) return;
+            const week = store.weeks.find(w => w.weekId === activeId);
+            if (!week) return;
+            week.goals.unshift({ id: ids.wg++, text, done: false, priority: addPrio.value });
+            save('weeks');
+            renderWeeklyTabs();
+            renderSplitView();
+            sound('pop');
+            updateProgress();
+        };
+        if (addBtn) addBtn.onclick = submitGoal;
+        if (addInput) addInput.onkeypress = e => { if (e.key === 'Enter') submitGoal(); };
+
+    } else if (type === 'monthly') {
+        const currentMonthId = getCurrentMonthId();
+        if (!store.months.find(m => m.monthId === currentMonthId)) {
+            store.months.unshift({ monthId: currentMonthId, goals: [] });
+            save('months');
+        }
+        store.months.sort((a, b) => {
+            const aIsCurrent = a.monthId === currentMonthId ? 1 : 0;
+            const bIsCurrent = b.monthId === currentMonthId ? 1 : 0;
+            if (aIsCurrent !== bIsCurrent) return bIsCurrent - aIsCurrent;
+            return a.monthId > b.monthId ? -1 : 1;
+        });
+        const activeId = getActiveMonthId();
+        const activeMonth = store.months.find(m => m.monthId === activeId);
+        const goals = activeMonth ? (activeMonth.goals || []) : [];
+        const isCurrent = activeId === currentMonthId;
+
+        let tabsHtml = '';
+        store.months.forEach(m => {
+            const isC = m.monthId === currentMonthId;
+            const isA = m.monthId === activeId;
+            tabsHtml += `<div class="week-tab ${isA ? 'active' : ''}" data-pane-month="${m.monthId}">
+                ${isC ? '<span class="running-dot"></span>' : ''}
+                <span>${getMonthLabel(m.monthId)}</span>
+                ${!isC ? `<span class="tab-close" data-pane-month-del="${m.monthId}">✕</span>` : ''}
+            </div>`;
+        });
+        tabsHtml += `<div class="week-tab-add" id="split-${side}-add-month-tab" title="Add new month">＋</div>`;
+
+        let listHtml = '';
+        goals.forEach(g => {
+            listHtml += `<div class="item goal monthly-goal ${g.done?'done':''} ${isCurrent?'running':''}" data-id="${g.id}" data-month="${activeId}">
+                <div style="display:flex;gap:8px;align-items:flex-start">
+                    <div class="chk"></div>
+                    <div style="flex:1">
+                        <div class="goal-text">${esc(g.text)}${getPriorityTag(g.priority)}${isCurrent ? '<span class="running-tag">Running</span>' : ''}</div>
+                    </div>
+                    <div class="actions"><button class="edit">✎</button><button class="del">✕</button></div>
+                </div></div>`;
+        });
+
+        container.innerHTML = `
+            <div class="week-tabs-wrapper">${tabsHtml}</div>
+            <div class="list split-list">${listHtml || '<div style="text-align:center;color:#555;padding:16px;font-size:0.8rem">No goals yet</div>'}</div>
+            <div class="add-row">
+                <input type="text" id="split-${side}-input" placeholder="Add monthly goal...">
+                <select class="priority-select" id="split-${side}-priority">
+                    <option value="">No Priority</option>
+                    <option value="very-very-important">🔴 Very Very Important</option>
+                    <option value="important">🟠 Important</option>
+                    <option value="necessary">🟡 Necessary</option>
+                    <option value="good-to-done">🟢 Good to Done</option>
+                </select>
+                <button class="btn-add" id="split-${side}-btn">Add Goal</button>
+            </div>
+        `;
+
+        container.querySelectorAll('[data-pane-month]').forEach(tab => {
+            tab.onclick = (e) => {
+                if (e.target.classList.contains('tab-close')) return;
+                switchMonthTab(tab.dataset.paneMonth);
+                renderSplitView();
+            };
+        });
+        container.querySelectorAll('[data-pane-month-del]').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                deleteMonthTab(btn.dataset.paneMonthDel);
+                renderSplitView();
+            };
+        });
+        const addTabBtn = document.getElementById(`split-${side}-add-month-tab`);
+        if (addTabBtn) {
+            addTabBtn.onclick = () => {
+                addNewMonthTab();
+                renderSplitView();
+            };
+        }
+
+        const addBtn = document.getElementById(`split-${side}-btn`);
+        const addInput = document.getElementById(`split-${side}-input`);
+        const addPrio = document.getElementById(`split-${side}-priority`);
+        const submitGoal = () => {
+            const text = addInput.value.trim();
+            if (!text) return;
+            const month = store.months.find(m => m.monthId === activeId);
+            if (!month) return;
+            month.goals.unshift({ id: ids.mg++, text, done: false, priority: addPrio.value });
+            save('months');
+            renderMonthlyTabs();
+            renderSplitView();
+            sound('pop');
+            updateProgress();
+        };
+        if (addBtn) addBtn.onclick = submitGoal;
+        if (addInput) addInput.onkeypress = e => { if (e.key === 'Enter') submitGoal(); };
+
+    } else if (type === 'yearly') {
+        const currentYearId = getCurrentYearId();
+        const upcomingYearId = getUpcomingYearId();
+        if (!store.years.find(y => y.yearId === currentYearId)) {
+            store.years.unshift({ yearId: currentYearId, goals: [] });
+            save('years');
+        }
+        store.years.sort((a, b) => {
+            const aIsCurrent = a.yearId === currentYearId ? 1 : 0;
+            const bIsCurrent = b.yearId === currentYearId ? 1 : 0;
+            if (aIsCurrent !== bIsCurrent) return bIsCurrent - aIsCurrent;
+            return a.yearId > b.yearId ? -1 : 1;
+        });
+        const activeId = getActiveYearId();
+        const activeYear = store.years.find(y => y.yearId === activeId);
+        const goals = activeYear ? (activeYear.goals || []) : [];
+        const isCurrent = activeId === currentYearId;
+
+        let tabsHtml = '';
+        store.years.forEach(y => {
+            const isC = y.yearId === currentYearId;
+            const isA = y.yearId === activeId;
+            tabsHtml += `<div class="week-tab ${isA ? 'active' : ''}" data-pane-year="${y.yearId}">
+                ${isC ? '<span class="running-dot"></span>' : ''}
+                <span>${y.yearId}</span>
+                ${!isC ? `<span class="tab-close" data-pane-year-del="${y.yearId}">✕</span>` : ''}
+            </div>`;
+        });
+        if (store.years.length < 2 && !store.years.find(y => y.yearId === upcomingYearId)) {
+            tabsHtml += `<div class="week-tab-add" id="split-${side}-add-year-tab" title="Add upcoming year (${upcomingYearId})">＋</div>`;
+        }
+
+        let listHtml = '';
+        goals.forEach(g => {
+            listHtml += `<div class="item goal yearly-goal ${g.done?'done':''} ${isCurrent?'running':''}" data-id="${g.id}" data-year="${activeId}">
+                <div style="display:flex;gap:8px;align-items:flex-start">
+                    <div class="chk"></div>
+                    <div style="flex:1">
+                        <div class="goal-text">${esc(g.text)}${getPriorityTag(g.priority)}${isCurrent ? '<span class="running-tag">Running</span>' : ''}</div>
+                    </div>
+                    <div class="actions"><button class="edit">✎</button><button class="del">✕</button></div>
+                </div></div>`;
+        });
+
+        container.innerHTML = `
+            <div class="week-tabs-wrapper">${tabsHtml}</div>
+            <div class="list split-list">${listHtml || '<div style="text-align:center;color:#555;padding:16px;font-size:0.8rem">No goals yet</div>'}</div>
+            <div class="add-row">
+                <input type="text" id="split-${side}-input" placeholder="Add yearly goal...">
+                <select class="priority-select" id="split-${side}-priority">
+                    <option value="">No Priority</option>
+                    <option value="very-very-important">🔴 Very Very Important</option>
+                    <option value="important">🟠 Important</option>
+                    <option value="necessary">🟡 Necessary</option>
+                    <option value="good-to-done">🟢 Good to Done</option>
+                </select>
+                <button class="btn-add" id="split-${side}-btn">Add Goal</button>
+            </div>
+        `;
+
+        container.querySelectorAll('[data-pane-year]').forEach(tab => {
+            tab.onclick = (e) => {
+                if (e.target.classList.contains('tab-close')) return;
+                switchYearTab(tab.dataset.paneYear);
+                renderSplitView();
+            };
+        });
+        container.querySelectorAll('[data-pane-year-del]').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                deleteYearTab(btn.dataset.paneYearDel);
+                renderSplitView();
+            };
+        });
+        const addTabBtn = document.getElementById(`split-${side}-add-year-tab`);
+        if (addTabBtn) {
+            addTabBtn.onclick = () => {
+                addNewYearTab();
+                renderSplitView();
+            };
+        }
+
+        const addBtn = document.getElementById(`split-${side}-btn`);
+        const addInput = document.getElementById(`split-${side}-input`);
+        const addPrio = document.getElementById(`split-${side}-priority`);
+        const submitGoal = () => {
+            const text = addInput.value.trim();
+            if (!text) return;
+            const year = store.years.find(y => y.yearId === activeId);
+            if (!year) return;
+            year.goals.unshift({ id: ids.yg++, text, done: false, priority: addPrio.value });
+            save('years');
+            renderYearlyTabs();
+            renderSplitView();
+            sound('pop');
+            updateProgress();
+        };
+        if (addBtn) addBtn.onclick = submitGoal;
+        if (addInput) addInput.onkeypress = e => { if (e.key === 'Enter') submitGoal(); };
+    }
+}
+
+// Edit handlers
+document.addEventListener('click', e => {
+    if (e.target.classList.contains('edit')) {
+        const item = e.target.closest('.item');
+        const id = +item.dataset.id;
+        const type = item.closest('.view')?.id.replace('view-','') || 'tasks';
+        let arr, field;
+        if (item.classList.contains('task')) { arr = store.tasks; field = 'text'; }
+        else if (item.classList.contains('daily-goal')) {
+            const dayId = item.dataset.day;
+            const day = store.days.find(d => d.dateId === dayId);
+            if (day) { arr = day.goals; field = 'text'; }
+            else return;
+        }
+        else if (item.classList.contains('weekly-goal')) {
+            const weekId = item.dataset.week;
+            const week = store.weeks.find(w => w.weekId === weekId);
+            if (week) { arr = week.goals; field = 'text'; }
+            else return;
+        }
+        else if (item.classList.contains('monthly-goal')) {
+            const monthId = item.dataset.month;
+            const month = store.months.find(m => m.monthId === monthId);
+            if (month) { arr = month.goals; field = 'text'; }
+            else return;
+        }
+        else if (item.classList.contains('yearly-goal')) {
+            const yearId = item.dataset.year;
+            const year = store.years.find(y => y.yearId === yearId);
+            if (year) { arr = year.goals; field = 'text'; }
+            else return;
+        }
+        else if (item.classList.contains('namaz-item')) {
+            const tabId = item.dataset.tab;
+            const tab = store.namazTabs.find(t => t.tabId === tabId);
+            if (tab) { arr = tab.items; field = 'note'; }
+            else return;
+        }
+        else return;
+        const obj = arr.find(x => x.id === id);
+        if (!obj) return;
+        const current = obj[field];
+        const input = document.createElement('input');
+        input.className = 'edit-input';
+        input.value = current;
+        const textEl = item.querySelector('.task-text, .goal-text, .namaz-text');
+        textEl.innerHTML = '';
+        textEl.appendChild(input);
+        input.focus();
+        input.onblur = () => {
+            obj[field] = input.value.trim() || current;
+            if (item.classList.contains('namaz-item')) obj.note = input.value.trim();
+            if (item.classList.contains('daily-goal')) {
+                save('days'); renderDailyTabs(); renderSplitView();
+            } else if (item.classList.contains('weekly-goal')) {
+                save('weeks'); renderWeeklyTabs(); renderSplitView();
+            } else if (item.classList.contains('monthly-goal')) {
+                save('months'); renderMonthlyTabs(); renderSplitView();
+            } else if (item.classList.contains('yearly-goal')) {
+                save('years'); renderYearlyTabs(); renderSplitView();
+            } else if (item.classList.contains('namaz-item')) {
+                save('namazTabs'); renderNamazTabs();
+            } else {
+                save(type === 'tasks' ? 'tasks' : type);
+                renderTasks();
+            }
+        };
+        input.onkeypress = ev => { if (ev.key === 'Enter') input.blur(); };
+    }
+    if (e.target.classList.contains('chk') && e.target.closest('.task')) {
+        const id = +e.target.closest('.task').dataset.id;
+        const t = store.tasks.find(x => x.id === id);
+        t.done = !t.done;
+        save('tasks'); renderTasks();
+        if (t.done) { sound('complete'); confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } }); }
+        else sound('pop');
+        updateProgress();
+    }
+    if (e.target.classList.contains('chk') && e.target.closest('.goal')) {
+        const el = e.target.closest('.goal');
+        const id = +el.dataset.id;
+        if (el.classList.contains('daily-goal')) {
+            const dayId = el.dataset.day;
+            const day = store.days.find(d => d.dateId === dayId);
+            if (day) {
+                const g = day.goals.find(x => x.id === id);
+                if (g) {
+                    g.done = !g.done;
+                    save('days'); renderDailyTabs(); renderSplitView();
+                    if (g.done) { sound('complete'); confetti({ particleCount: 40, spread: 50, origin: { y: 0.6 } }); }
+                    else sound('pop');
+                    updateProgress();
+                }
+            }
+        } else if (el.classList.contains('weekly-goal')) {
+            const weekId = el.dataset.week;
+            const week = store.weeks.find(w => w.weekId === weekId);
+            if (week) {
+                const g = week.goals.find(x => x.id === id);
+                if (g) {
+                    g.done = !g.done;
+                    save('weeks'); renderWeeklyTabs(); renderSplitView();
+                    if (g.done) { sound('complete'); confetti({ particleCount: 40, spread: 50, origin: { y: 0.6 } }); }
+                    else sound('pop');
+                    updateProgress();
+                }
+            }
+        } else if (el.classList.contains('monthly-goal')) {
+            const monthId = el.dataset.month;
+            const month = store.months.find(m => m.monthId === monthId);
+            if (month) {
+                const g = month.goals.find(x => x.id === id);
+                if (g) {
+                    g.done = !g.done;
+                    save('months'); renderMonthlyTabs(); renderSplitView();
+                    if (g.done) { sound('complete'); confetti({ particleCount: 40, spread: 50, origin: { y: 0.6 } }); }
+                    else sound('pop');
+                    updateProgress();
+                }
+            }
+        } else if (el.classList.contains('yearly-goal')) {
+            const yearId = el.dataset.year;
+            const year = store.years.find(y => y.yearId === yearId);
+            if (year) {
+                const g = year.goals.find(x => x.id === id);
+                if (g) {
+                    g.done = !g.done;
+                    save('years'); renderYearlyTabs(); renderSplitView();
+                    if (g.done) { sound('complete'); confetti({ particleCount: 40, spread: 50, origin: { y: 0.6 } }); }
+                    else sound('pop');
+                    updateProgress();
+                }
+            }
+        }
+    }
+    if (e.target.classList.contains('del')) {
+        const item = e.target.closest('.item');
+        const id = +item.dataset.id;
+        if (item.classList.contains('task')) {
+            store.tasks = store.tasks.filter(t => t.id !== id);
+            save('tasks'); renderTasks();
+        } else if (item.classList.contains('note')) {
+            store.notes = store.notes.filter(n => n.id !== id);
+            save('notes'); renderNotes();
+        } else if (item.classList.contains('daily-goal')) {
+            const dayId = item.dataset.day;
+            const day = store.days.find(d => d.dateId === dayId);
+            if (day) {
+                day.goals = day.goals.filter(g => g.id !== id);
+                save('days'); renderDailyTabs(); renderSplitView();
+            }
+        } else if (item.classList.contains('weekly-goal')) {
+            const weekId = item.dataset.week;
+            const week = store.weeks.find(w => w.weekId === weekId);
+            if (week) {
+                week.goals = week.goals.filter(g => g.id !== id);
+                save('weeks'); renderWeeklyTabs(); renderSplitView();
+            }
+        } else if (item.classList.contains('monthly-goal')) {
+            const monthId = item.dataset.month;
+            const month = store.months.find(m => m.monthId === monthId);
+            if (month) {
+                month.goals = month.goals.filter(g => g.id !== id);
+                save('months'); renderMonthlyTabs(); renderSplitView();
+            }
+        } else if (item.classList.contains('yearly-goal')) {
+            const yearId = item.dataset.year;
+            const year = store.years.find(y => y.yearId === yearId);
+            if (year) {
+                year.goals = year.goals.filter(g => g.id !== id);
+                save('years'); renderYearlyTabs(); renderSplitView();
+            }
+        } else if (item.classList.contains('namaz-item')) {
+            const tabId = item.dataset.tab;
+            const tab = store.namazTabs.find(t => t.tabId === tabId);
+            if (tab) {
+                tab.items = tab.items.filter(n => n.id !== id);
+                save('namazTabs'); renderNamazTabs();
+            }
+        }
+        sound('del');
+        updateProgress();
+    }
+});
+document.addEventListener('input', e => {
+    if (e.target.classList.contains('note-text')) {
+        const id = +e.target.closest('.note').dataset.id;
+        const n = store.notes.find(x => x.id === id);
+        if (n) { n.text = e.target.value; save('notes'); updateProgress(); }
+    }
+});
+
+// Year Progress Modal
+document.getElementById('year-section').onclick = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 1);
+    const end = new Date(now.getFullYear() + 1, 0, 1);
+    const totalDays = Math.round((end - start) / 86400000);
+    const passedDays = Math.floor((now - start) / 86400000);
+    const leftDays = totalDays - passedDays;
+    const totalWeeks = Math.floor(totalDays / 7);
+    const passedWeeks = Math.floor(passedDays / 7);
+    const leftWeeks = totalWeeks - passedWeeks;
+    const totalMonths = 12;
+    const passedMonths = now.getMonth();
+    const leftMonths = totalMonths - passedMonths;
+    const yearPct = Math.round(passedDays / totalDays * 100);
+
+    document.getElementById('year-stats').innerHTML = `
+        <div class="stat passed"><b class="dynamic" data-target="${passedDays}">0</b><span>Days Passed</span></div>
+        <div class="stat remaining"><b class="dynamic" data-target="${leftDays}">0</b><span>Days Left</span></div>
+        <div class="stat passed"><b class="dynamic" data-target="${passedWeeks}">0</b><span>Weeks Passed</span></div>
+        <div class="stat remaining"><b class="dynamic" data-target="${leftWeeks}">0</b><span>Weeks Left</span></div>
+        <div class="stat passed"><b class="dynamic" data-target="${passedMonths}">0</b><span>Months Passed</span></div>
+        <div class="stat remaining"><b class="dynamic" data-target="${leftMonths}">0</b><span>Months Left</span></div>
+    `;
+    // Animate numbers
+    document.querySelectorAll('.stat .dynamic[data-target]').forEach(el => {
+        const target = parseInt(el.dataset.target);
+        const duration = 800;
+        const start = performance.now();
+        function tick(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.round(target * eased);
+            if (progress < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+    });
+
+    document.getElementById('achievements').innerHTML = store.achievements;
+    document.getElementById('targets').innerHTML = store.targets;
+    document.getElementById('yearModal').classList.add('show');
+};
+// Close modal on backdrop click
+document.getElementById('yearModal').onclick = function(e) {
+    if (e.target === this) this.classList.remove('show');
+};
+// Close modal on Escape key
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('yearModal').classList.remove('show');
+});
+
+// Notion-like formatting functions
+function formatDoc(cmd, value) {
+    document.execCommand(cmd, false, value || null);
+}
+function insertHeading() {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    document.execCommand('formatBlock', false, 'h3');
+}
+function insertCheckpoint() {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const point = document.createElement('div');
+    point.style.cssText = 'display:flex;align-items:flex-start;gap:6px;margin:4px 0;padding:6px 8px;background:rgba(124,92,252,0.08);border-radius:8px;border-left:3px solid #7c5cfc;';
+    point.innerHTML = '<span style="color:#7c5cfc;font-size:0.9rem;flex-shrink:0">◆</span><span contenteditable="true" style="flex:1;outline:none">New point...</span>';
+    range.insertNode(point);
+    // Focus the editable span
+    const editable = point.querySelector('span:last-child');
+    const newRange = document.createRange();
+    newRange.selectNodeContents(editable);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+}
+
+document.getElementById('achievements').oninput = function() { store.achievements = this.innerHTML; save('ach'); };
+document.getElementById('targets').oninput = function() { store.targets = this.innerHTML; save('tgt'); };
+
+// Progress
+function updateProgress() {
+    const calc = arr => arr.length ? Math.round(arr.filter(x => x.done).length / arr.length * 100) : 0;
+    // Gather all daily goals across all days for progress
+    const allDailyGoals = store.days.reduce((acc, d) => acc.concat(d.goals || []), []);
+    const d = calc(allDailyGoals);
+    // Gather all weekly goals across all weeks for progress
+    const allWeeklyGoals = store.weeks.reduce((acc, w) => acc.concat(w.goals || []), []);
+    const w = calc(allWeeklyGoals);
+    // Gather all monthly goals across all months for progress
+    const allMonthlyGoals = store.months.reduce((acc, m) => acc.concat(m.goals || []), []);
+    const m = calc(allMonthlyGoals);
+    // Gather all yearly goals across all years for progress
+    const allYearlyGoals = store.years.reduce((acc, y) => acc.concat(y.goals || []), []);
+    const yg = calc(allYearlyGoals);
+    document.getElementById('daily-bar').style.width = d + '%';
+    document.getElementById('daily-pct').textContent = d + '%';
+    document.getElementById('weekly-bar').style.width = w + '%';
+    document.getElementById('weekly-pct').textContent = w + '%';
+    document.getElementById('monthly-bar').style.width = m + '%';
+    document.getElementById('monthly-pct').textContent = m + '%';
+    const yearlyBar = document.getElementById('yearly-bar');
+    const yearlyPct = document.getElementById('yearly-pct');
+    if (yearlyBar) yearlyBar.style.width = yg + '%';
+    if (yearlyPct) yearlyPct.textContent = yg + '%';
+
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 1);
+    const end = new Date(now.getFullYear() + 1, 0, 1);
+    const total = Math.round((end - start) / 86400000);
+    const passed = Math.floor((now - start) / 86400000);
+    const left = Math.max(0, total - passed);
+    const yp = Math.round(passed / total * 100);
+    document.getElementById('year-bar').style.width = yp + '%';
+    document.getElementById('year-pct').textContent = yp + '%';
+    document.getElementById('year-text').textContent = left + ' days left';
+
+    const nc = store.notes.length;
+    const np = Math.min(100, nc * 10);
+    document.getElementById('notes-bar').style.width = np + '%';
+    document.getElementById('notes-pct').textContent = np + '%';
+    document.getElementById('notes-count').textContent = nc + ' notes';
+}
+
+function setGreeting() {
+    const h = new Date().getHours();
+    document.getElementById('greeting').textContent = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
+// Quran Carousel
+let currentQuranSlide = 0;
+const totalQuranSlides = 5;
+let quranInterval = null;
+
+function showQuranSlide(index) {
+    currentQuranSlide = (index + totalQuranSlides) % totalQuranSlides;
+    const slides = document.querySelectorAll('.quran-slide');
+    const dots = document.querySelectorAll('.quran-dot');
+    const counter = document.getElementById('quran-slide-counter');
+    
+    slides.forEach((s, idx) => {
+        if (idx === currentQuranSlide) s.classList.add('active');
+        else s.classList.remove('active');
+    });
+    dots.forEach((d, idx) => {
+        if (idx === currentQuranSlide) d.classList.add('active');
+        else d.classList.remove('active');
+    });
+    if (counter) counter.textContent = (currentQuranSlide + 1) + ' / ' + totalQuranSlides;
+}
+
+function nextQuranSlide() { showQuranSlide(currentQuranSlide + 1); }
+function prevQuranSlide() { showQuranSlide(currentQuranSlide - 1); }
+function setQuranSlide(idx) { showQuranSlide(idx); }
+
+function openQuranLink(e) {
+    if (e) e.preventDefault();
+    try {
+        const { shell } = require('electron');
+        if (shell && typeof shell.openExternal === 'function') {
+            shell.openExternal('https://quranmazid.com/');
+            return;
+        }
+    } catch(err) {}
+    window.open('https://quranmazid.com/', '_blank');
+}
+
+function startQuranCarousel() {
+    if (quranInterval) clearInterval(quranInterval);
+    quranInterval = setInterval(nextQuranSlide, 9000);
+}
+
+const quranWrap = document.getElementById('quran-carousel');
+if (quranWrap) {
+    quranWrap.onmouseenter = () => { if (quranInterval) clearInterval(quranInterval); };
+    quranWrap.onmouseleave = () => { startQuranCarousel(); };
+}
+startQuranCarousel();
+
+setGreeting();
+updateTimer();
+renderTasks();
+renderNotes();
+renderDailyTabs();
+renderWeeklyTabs();
+renderMonthlyTabs();
+renderYearlyTabs();
+renderNamazTabs();
+updateProgress();
+</script>
+</body>
+</html>
